@@ -4,7 +4,7 @@ import yfinance as yf
 TICKERS = {
     # Benchmarks
     "^NSEI": "NIFTY 50",
-    "^CNX500": "NIFTY 500",
+    "^CRSLDX": "NIFTY 500",
 
     # 12 Core NSE Sectors
     "^NSEBANK": "NIFTY BANK",
