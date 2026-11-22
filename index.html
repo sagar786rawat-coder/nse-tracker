@@ -1,0 +1,4373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NSE Sector &amp; Theme Rotation Tracker — Daily &amp; Weekly RRG Terminal</title>
+  <style>
+    /* =====================================================================
+     * DESIGN TOKENS — DARK INSTITUTIONAL TERMINAL THEME (ZERO EXTERNAL CDNs)
+     * Obsidian/Slate palette, crisp borders, tabular monospace financials
+     * ===================================================================== */
+    :root {
+      --bg-base: #0b0f17;
+      --bg-card: #111827;
+      --bg-card-translucent: rgba(17, 24, 39, 0.92);
+      --bg-elevated: #182235;
+      --bg-inset: #0d1320;
+      --border-default: #1f2937;
+      --border-strong: #334155;
+
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+
+      --accent-sky: #38bdf8;
+      --accent-sky-bg: rgba(56, 189, 248, 0.14);
+      --accent-sky-border: rgba(56, 189, 248, 0.38);
+
+      /* 4 Quadrant Semantic Colors */
+      --q-leading: #10b981;
+      --q-leading-text: #6ee7b7;
+      --q-leading-bg: rgba(16, 185, 129, 0.14);
+      --q-leading-border: rgba(16, 185, 129, 0.40);
+
+      --q-weakening: #f59e0b;
+      --q-weakening-text: #fcd34d;
+      --q-weakening-bg: rgba(245, 158, 11, 0.14);
+      --q-weakening-border: rgba(245, 158, 11, 0.40);
+
+      --q-lagging: #f43f5e;
+      --q-lagging-text: #fda4af;
+      --q-lagging-bg: rgba(244, 63, 94, 0.14);
+      --q-lagging-border: rgba(244, 63, 94, 0.40);
+
+      --q-improving: #6366f1;
+      --q-improving-text: #c7d2fe;
+      --q-improving-bg: rgba(99, 102, 241, 0.16);
+      --q-improving-border: rgba(99, 102, 241, 0.42);
+
+      /* Category Semantic Colors */
+      --cat-core-bg: rgba(148, 163, 184, 0.13);
+      --cat-core-text: #cbd5e1;
+      --cat-core-border: rgba(148, 163, 184, 0.28);
+
+      --cat-theme-bg: rgba(6, 182, 212, 0.14);
+      --cat-theme-text: #67e8f9;
+      --cat-theme-border: rgba(6, 182, 212, 0.36);
+
+      --cat-broad-bg: rgba(234, 179, 8, 0.14);
+      --cat-broad-text: #fde047;
+      --cat-broad-border: rgba(234, 179, 8, 0.36);
+
+      --proxy-bg: rgba(217, 70, 239, 0.12);
+      --proxy-text: #f0abfc;
+      --proxy-border: rgba(217, 70, 239, 0.34);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 11px;
+      --radius-lg: 14px;
+      --shadow-card: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(ellipse 70% 42% at 10% -10%, rgba(99, 102, 241, 0.09), transparent 60%),
+        radial-gradient(ellipse 60% 38% at 90% -8%, rgba(16, 185, 129, 0.08), transparent 55%);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+    .hidden {
+      display: none !important;
+    }
+
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-inset);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #273449;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b4f6e;
+    }
+
+    /* =====================================================================
+     * STICKY HEADER BAR
+     * ===================================================================== */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 35;
+      background: rgba(11, 15, 23, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .header-inner {
+      max-width: 1640px;
+      margin: 0 auto;
+      padding: 10px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(99, 102, 241, 0.24));
+      border: 1px solid rgba(129, 140, 248, 0.36);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a5b4fc;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 15.5px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .brand-subrow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin-top: 4px;
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      font-family: var(--font-sans);
+      transition: filter 0.15s ease;
+      white-space: nowrap;
+    }
+    .sync-pill:hover {
+      filter: brightness(1.14);
+    }
+    .sync-pill.live {
+      background: var(--q-leading-bg);
+      border-color: var(--q-leading-border);
+      color: var(--q-leading-text);
+    }
+    .sync-pill.demo {
+      background: var(--q-weakening-bg);
+      border-color: var(--q-weakening-border);
+      color: var(--q-weakening-text);
+    }
+    .sync-pill.syncing {
+      background: var(--accent-sky-bg);
+      border-color: var(--accent-sky-border);
+      color: #7dd3fc;
+    }
+
+    .sync-dot {
+      width: 6.5px;
+      height: 6.5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .sync-pill.live .sync-dot {
+      background: #10b981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.85);
+    }
+    .sync-pill.demo .sync-dot {
+      background: #f59e0b;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.80);
+    }
+    .sync-pill.syncing .sync-dot {
+      background: #38bdf8;
+    }
+
+    .header-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .segmented {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px;
+      border-radius: 10px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+    }
+
+    .seg-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      padding: 5px 10px;
+      border-radius: 7px;
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      white-space: nowrap;
+    }
+    .seg-btn:hover {
+      color: #ffffff;
+    }
+    .seg-btn.active {
+      background: var(--accent-sky-bg);
+      border-color: var(--accent-sky-border);
+      color: #7dd3fc;
+    }
+    .seg-btn.active-indigo {
+      background: var(--q-improving-bg);
+      border-color: var(--q-improving-border);
+      color: var(--q-improving-text);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 9px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      transition: all 0.14s ease;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      border-color: var(--border-strong);
+      background: #202d44;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, #0284c7, #0369a1);
+      border-color: rgba(56, 189, 248, 0.45);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(180deg, #0ea5e9, #0284c7);
+    }
+    .btn-emerald {
+      background: linear-gradient(180deg, #059669, #047857);
+      border-color: rgba(52, 211, 153, 0.45);
+      color: #ffffff;
+    }
+    .btn-emerald:hover {
+      background: linear-gradient(180deg, #10b981, #059669);
+    }
+    .btn-amber {
+      background: linear-gradient(180deg, #d97706, #b45309);
+      border-color: rgba(251, 191, 36, 0.45);
+      color: #ffffff;
+    }
+    .btn-ghost {
+      background: var(--bg-inset);
+      color: var(--text-secondary);
+    }
+    .btn-ghost:hover {
+      color: #ffffff;
+      border-color: var(--accent-sky-border);
+    }
+    .btn-toggle-on {
+      background: var(--accent-sky-bg);
+      border-color: var(--accent-sky-border);
+      color: #7dd3fc;
+    }
+    .btn-sm {
+      padding: 5px 9px;
+      font-size: 11px;
+      border-radius: 8px;
+    }
+
+    @keyframes spin360 {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spinning {
+      animation: spin360 0.75s linear infinite;
+    }
+
+    /* =====================================================================
+     * MAIN CONTAINER & CARDS
+     * ===================================================================== */
+    .main-container {
+      max-width: 1640px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px 18px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--bg-card-translucent);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+
+    /* =====================================================================
+     * CATEGORY FILTER BAR + SEARCH + CLARITY CONTROLS
+     * ===================================================================== */
+    .filter-toolbar {
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .cat-pills {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .cat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .cat-pill:hover {
+      color: #ffffff;
+      border-color: var(--border-strong);
+    }
+    .cat-pill.active {
+      background: var(--accent-sky-bg);
+      border-color: var(--accent-sky-border);
+      color: #e0f2fe;
+    }
+    .cat-pill .count-badge {
+      padding: 1px 6px;
+      border-radius: 9999px;
+      background: rgba(148, 163, 184, 0.16);
+      font-size: 10.5px;
+    }
+    .cat-pill.active .count-badge {
+      background: rgba(56, 189, 248, 0.28);
+      color: #ffffff;
+    }
+
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      justify-content: flex-end;
+      min-width: 260px;
+    }
+
+    .search-wrap {
+      position: relative;
+      min-width: 220px;
+      flex: 1;
+      max-width: 320px;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 7px 10px 7px 31px;
+      border-radius: 9px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .text-input:focus {
+      border-color: var(--accent-sky);
+    }
+    .text-input-plain {
+      padding-left: 11px;
+    }
+
+    /* =====================================================================
+     * 4 CLICKABLE QUADRANT KPI SUMMARY CARDS
+     * ===================================================================== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi-card {
+      text-align: left;
+      padding: 13px 15px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-card-translucent);
+      border: 1px solid var(--border-default);
+      cursor: pointer;
+      transition: all 0.16s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      font-family: var(--font-sans);
+      color: inherit;
+    }
+    .kpi-card:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      background: #162033;
+    }
+    .kpi-card.active-Leading {
+      border-color: var(--q-leading);
+      box-shadow: 0 0 0 1px var(--q-leading), 0 8px 22px rgba(16, 185, 129, 0.18);
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .kpi-card.active-Weakening {
+      border-color: var(--q-weakening);
+      box-shadow: 0 0 0 1px var(--q-weakening), 0 8px 22px rgba(245, 158, 11, 0.18);
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .kpi-card.active-Lagging {
+      border-color: var(--q-lagging);
+      box-shadow: 0 0 0 1px var(--q-lagging), 0 8px 22px rgba(244, 63, 94, 0.18);
+      background: rgba(244, 63, 94, 0.08);
+    }
+    .kpi-card.active-Improving {
+      border-color: var(--q-improving);
+      box-shadow: 0 0 0 1px var(--q-improving), 0 8px 22px rgba(99, 102, 241, 0.20);
+      background: rgba(99, 102, 241, 0.10);
+    }
+
+    .kpi-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+    .kpi-label-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .kpi-dot {
+      width: 8.5px;
+      height: 8.5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .kpi-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .kpi-pos {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .kpi-count {
+      font-size: 25px;
+      font-weight: 700;
+      line-height: 1;
+      text-align: right;
+      color: #ffffff;
+    }
+    .kpi-pct {
+      font-size: 10px;
+      text-align: right;
+      margin-top: 3px;
+    }
+    .kpi-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-height: 22px;
+    }
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      font-size: 10px;
+      color: #d1d5db;
+    }
+
+    /* =====================================================================
+     * MAIN TWO-COLUMN WORKSPACE: RRG (LEFT) + INSPECTOR (RIGHT)
+     * ===================================================================== */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.92fr) minmax(340px, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .card-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .card-subtitle {
+      margin: 2px 0 0;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    /* Pills & Badges */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10.5px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .pill-blue {
+      background: var(--accent-sky-bg);
+      color: #7dd3fc;
+      border-color: var(--accent-sky-border);
+    }
+    .pill-proxy {
+      background: var(--proxy-bg);
+      color: var(--proxy-text);
+      border-color: var(--proxy-border);
+    }
+    .pill-cat-core {
+      background: var(--cat-core-bg);
+      color: var(--cat-core-text);
+      border-color: var(--cat-core-border);
+    }
+    .pill-cat-theme {
+      background: var(--cat-theme-bg);
+      color: var(--cat-theme-text);
+      border-color: var(--cat-theme-border);
+    }
+    .pill-cat-broad {
+      background: var(--cat-broad-bg);
+      color: var(--cat-broad-text);
+      border-color: var(--cat-broad-border);
+    }
+    .pill-Leading {
+      background: var(--q-leading-bg);
+      color: var(--q-leading-text);
+      border-color: var(--q-leading-border);
+    }
+    .pill-Weakening {
+      background: var(--q-weakening-bg);
+      color: var(--q-weakening-text);
+      border-color: var(--q-weakening-border);
+    }
+    .pill-Lagging {
+      background: var(--q-lagging-bg);
+      color: var(--q-lagging-text);
+      border-color: var(--q-lagging-border);
+    }
+    .pill-Improving {
+      background: var(--q-improving-bg);
+      color: var(--q-improving-text);
+      border-color: var(--q-improving-border);
+    }
+
+    /* RRG Controls Strip */
+    .rrg-controls {
+      padding: 9px 16px;
+      background: rgba(13, 19, 32, 0.84);
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .slider-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 9px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    input[type='range'].rrg-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      border-radius: 9999px;
+      background: #243247;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type='range'].rrg-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent-sky);
+      border: 2px solid #0b0f17;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+      transition: transform 0.12s ease;
+    }
+    input[type='range'].rrg-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* RRG SVG Stage & Silky Hover Focus Dimming */
+    .rrg-stage {
+      position: relative;
+      width: 100%;
+      height: 540px;
+      background: rgba(11, 15, 23, 0.72);
+      user-select: none;
+    }
+    .rrg-stage svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .rrg-trail-group,
+    .rrg-label-group,
+    .rrg-connector {
+      transition: opacity 0.14s ease;
+    }
+    #rrg-svg.has-hover .rrg-trail-group:not(.is-hovered),
+    #rrg-svg.has-hover .rrg-label-group:not(.is-hovered),
+    #rrg-svg.has-hover .rrg-connector:not(.is-hovered) {
+      opacity: 0.15 !important;
+    }
+    #rrg-svg.has-hover .rrg-trail-group.is-hovered,
+    #rrg-svg.has-hover .rrg-label-group.is-hovered,
+    #rrg-svg.has-hover .rrg-connector.is-hovered {
+      opacity: 1 !important;
+    }
+
+    @keyframes headPulse {
+      0%, 100% { opacity: 0.48; transform: scale(1); }
+      50% { opacity: 0.10; transform: scale(1.65); }
+    }
+    .rrg-head-pulse {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: headPulse 2.1s ease-in-out infinite;
+    }
+
+    /* Floating Hover Tooltip */
+    .rrg-tooltip {
+      position: fixed;
+      z-index: 60;
+      width: 288px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(17, 24, 39, 0.97);
+      border: 1px solid rgba(148, 163, 184, 0.30);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(12px);
+      pointer-events: none;
+      font-size: 12px;
+    }
+
+    /* Visibility Chips Footer */
+    .chips-footer {
+      padding: 11px 16px;
+      border-top: 1px solid var(--border-default);
+      background: rgba(13, 19, 32, 0.70);
+    }
+    .chips-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+    .chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5.5px;
+    }
+    .sector-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3.5px 8px;
+      border-radius: 7px;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border-default);
+      background: var(--bg-card);
+      color: #e5e7eb;
+      transition: all 0.14s ease;
+    }
+    .sector-chip:hover {
+      border-color: var(--border-strong);
+    }
+    .sector-chip.selected {
+      background: var(--accent-sky-bg);
+      border-color: var(--accent-sky);
+      color: #ffffff;
+    }
+    .sector-chip.hidden-sector {
+      opacity: 0.35;
+      text-decoration: line-through;
+      background: var(--bg-inset);
+    }
+
+    /* =====================================================================
+     * RIGHT PANEL: SECTOR / THEME INSPECTOR
+     * ===================================================================== */
+    .inspector-body {
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      flex: 1;
+    }
+
+    .inset-box {
+      padding: 11px 12px;
+      border-radius: var(--radius-md);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+    }
+
+    .history-notice {
+      padding: 8px 11px;
+      border-radius: 9px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      color: var(--text-secondary);
+    }
+    .history-notice.partial {
+      background: rgba(245, 158, 11, 0.10);
+      border-color: rgba(245, 158, 11, 0.34);
+      color: #fde68a;
+    }
+
+    .metric-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .metric-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .metric-val-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .metric-val {
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .transition-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 6px;
+    }
+    .signal-desc {
+      margin: 7px 0 0;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      line-height: 1.48;
+    }
+
+    .return-pills-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .ret-pill-box {
+      padding: 7px 5px;
+      border-radius: 9px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      text-align: center;
+    }
+    .ret-pill-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .ret-pill-val {
+      font-size: 11.5px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .sparkline-box {
+      height: 130px;
+      width: 100%;
+    }
+    .sparkline-box svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .sparkline-readout {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      padding-top: 6px;
+      margin-top: 5px;
+      border-top: 1px solid var(--border-default);
+    }
+
+    .constituents-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .constituent-pill {
+      padding: 4px 8.5px;
+      border-radius: 7px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      font-size: 11px;
+      font-weight: 600;
+      color: #d1d5db;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .constituent-pill:hover {
+      border-color: var(--accent-sky);
+      color: #ffffff;
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    /* =====================================================================
+     * SORTABLE RETURN HEATMAP & LEADERBOARD TABLE
+     * ===================================================================== */
+    .table-tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table.leaderboard, table.ref-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12.5px;
+    }
+    table.leaderboard thead tr, table.ref-table thead tr {
+      background: rgba(13, 19, 32, 0.92);
+      border-bottom: 1px solid var(--border-default);
+    }
+    table.leaderboard th, table.ref-table th {
+      padding: 10px 12px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      user-select: none;
+    }
+    table.leaderboard th {
+      cursor: pointer;
+      transition: color 0.14s ease;
+    }
+    table.leaderboard th:hover {
+      color: #ffffff;
+    }
+    table.leaderboard th.sorted {
+      color: var(--accent-sky);
+    }
+    table.leaderboard td, table.ref-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.85);
+      white-space: nowrap;
+    }
+    table.leaderboard tbody tr {
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    table.leaderboard tbody tr:hover {
+      background: rgba(30, 41, 59, 0.55);
+    }
+    table.leaderboard tbody tr.selected-row {
+      background: rgba(56, 189, 248, 0.13);
+    }
+
+    .num-right { text-align: right; }
+    .num-center { text-align: center; }
+
+    .text-pos { color: #34d399; }
+    .text-neg { color: #fb7185; }
+    .text-blue { color: #38bdf8; }
+    .text-amber { color: #fbbf24; }
+    .text-indigo { color: #a5b4fc; }
+    .text-muted { color: var(--text-secondary); }
+
+    /* =====================================================================
+     * DATA & GITHUB SYNC MODAL (3 TABS)
+     * ===================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      background: rgba(2, 6, 23, 0.80);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-dialog {
+      width: 100%;
+      max-width: 840px;
+      max-height: 92vh;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.80);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px 20px 0;
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-inset);
+    }
+
+    .tab-btn {
+      padding: 9px 14px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .tab-btn:hover {
+      color: #ffffff;
+    }
+    .tab-btn.active {
+      color: var(--accent-sky);
+      border-bottom-color: var(--accent-sky);
+    }
+
+    .modal-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      font-size: 12.5px;
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .info-banner {
+      padding: 11px 14px;
+      border-radius: 11px;
+      background: rgba(56, 189, 248, 0.09);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      color: #d1d5db;
+      line-height: 1.5;
+    }
+
+    .error-banner {
+      padding: 10px 13px;
+      border-radius: 10px;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      color: #fda4af;
+      font-weight: 500;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(148, 163, 184, 0.28);
+      border-radius: 12px;
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg-inset);
+      transition: all 0.15s ease;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent-sky);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    textarea.code-input {
+      width: 100%;
+      min-height: 125px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      color: #e5e7eb;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      resize: vertical;
+      outline: none;
+    }
+    textarea.code-input:focus {
+      border-color: var(--accent-sky);
+    }
+
+    details.code-disclosure {
+      border-radius: 11px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      overflow: hidden;
+    }
+    details.code-disclosure summary {
+      padding: 10px 13px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #e5e7eb;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      list-style: none;
+      user-select: none;
+    }
+    details.code-disclosure summary::-webkit-details-marker {
+      display: none;
+    }
+    details.code-disclosure[open] summary {
+      border-bottom: 1px solid var(--border-default);
+      background: rgba(30, 41, 59, 0.44);
+    }
+    .code-box-wrap {
+      padding: 11px 13px;
+    }
+    pre.code-snippet {
+      margin: 0;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.48;
+      color: #d1d5db;
+      max-height: 260px;
+    }
+
+    /* Footer & Toast Stack */
+    .app-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding-top: 2px;
+    }
+
+    .toast-stack {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 95;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast-item {
+      pointer-events: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.52);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.22s ease;
+    }
+    .toast-item.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast-success { background: #059669; }
+    .toast-error { background: #e11d48; }
+    .toast-info { background: #0284c7; }
+
+    /* =====================================================================
+     * RESPONSIVE BREAKPOINTS
+     * ===================================================================== */
+    @media (max-width: 1180px) {
+      .workspace-grid {
+        grid-template-columns: 1fr;
+      }
+      .rrg-stage {
+        height: 460px;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .header-inner {
+        padding: 10px 14px;
+      }
+      .main-container {
+        padding: 12px 14px 24px;
+      }
+      .toolbar-right {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+      .rrg-stage {
+        height: 390px;
+      }
+      .return-pills-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .search-wrap {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =================================================================== -->
+  <!-- STICKY HEADER BAR                                                   -->
+  <!-- =================================================================== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="3" x2="12" y2="21" stroke-dasharray="2.5 2.5" opacity="0.55" />
+            <line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="2.5 2.5" opacity="0.55" />
+            <path d="M5.5 16.5 C 7.5 10, 11.5 7, 17.5 6" stroke-linecap="round" />
+            <circle cx="17.5" cy="6" r="2.4" fill="currentColor" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">NSE Sector &amp; Theme Rotation Tracker</h1>
+          <div class="brand-subrow">
+            <button id="sync-status-pill" class="sync-pill syncing" title="Open GitHub Auto-Sync &amp; Data settings">
+              <span class="sync-dot"></span>
+              <span id="sync-status-text">Checking ./eod_data.csv...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Benchmark Toggle: NIFTY 50 vs NIFTY 500 -->
+        <div class="segmented" role="group" aria-label="Benchmark selector">
+          <button id="bench-n50" class="seg-btn active-indigo" data-bench="NIFTY 50">vs NIFTY 50</button>
+          <button id="bench-n500" class="seg-btn" data-bench="NIFTY 500">vs NIFTY 500</button>
+        </div>
+
+        <!-- Timeframe Toggle: Daily EOD vs Weekly Fri -->
+        <div class="segmented" role="group" aria-label="Timeframe selector">
+          <button id="tf-daily" class="seg-btn active">Daily EOD</button>
+          <button id="tf-weekly" class="seg-btn">Weekly Fri</button>
+        </div>
+
+        <!-- Sync Now -->
+        <button id="btn-sync-now" class="btn" title="Re-fetch ./eod_data.csv or saved GitHub Raw CSV">
+          <svg id="sync-now-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" />
+          </svg>
+          <span>Sync Now</span>
+        </button>
+
+        <!-- Data & GitHub Sync Modal -->
+        <button id="btn-open-modal" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
+          </svg>
+          <span>Data &amp; GitHub Sync</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =================================================================== -->
+  <!-- MAIN TERMINAL CONTAINER                                             -->
+  <!-- =================================================================== -->
+  <main class="main-container">
+
+    <!-- 1. CATEGORY FILTER BAR + SEARCH + CLARITY CONTROLS -->
+    <section class="card filter-toolbar" aria-label="Category filter and clarity controls">
+      <div class="cat-pills" role="group" aria-label="Universe category filter">
+        <button class="cat-pill active" data-category="all">
+          <span>All</span>
+          <span id="cat-count-all" class="count-badge mono">26</span>
+        </button>
+        <button class="cat-pill" data-category="core">
+          <span>Core Sectors</span>
+          <span id="cat-count-core" class="count-badge mono">12</span>
+        </button>
+        <button class="cat-pill" data-category="theme">
+          <span>Themes</span>
+          <span id="cat-count-theme" class="count-badge mono">10</span>
+        </button>
+        <button class="cat-pill" data-category="broad">
+          <span>Broad &amp; Risk-Off</span>
+          <span id="cat-count-broad" class="count-badge mono">4</span>
+        </button>
+      </div>
+
+      <div class="toolbar-right">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input id="global-search" class="text-input" type="text" placeholder="Search index, ETF proxy, or stock (e.g. HAL, BSE, GOLD)..." />
+        </div>
+
+        <button id="btn-dim-unfocused" class="btn btn-sm btn-ghost" title="Dim all trails except the selected index for uncluttered focus">
+          <span>Dim Unfocused</span>
+        </button>
+
+        <button id="btn-label-mode" class="btn btn-sm btn-ghost" title="Toggle between all label pills and clean focus-only labels">
+          <span id="label-mode-text">Labels: All</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. FOUR CLICKABLE QUADRANT KPI SUMMARY CARDS -->
+    <section class="kpi-grid" aria-label="RRG Quadrant KPI summary cards">
+      <button class="kpi-card" data-quadrant="Leading">
+        <div class="kpi-top">
+          <div>
+            <div class="kpi-label-row">
+              <span class="kpi-dot" style="background:var(--q-leading);box-shadow:0 0 8px rgba(16,185,129,0.75)"></span>
+              <span class="kpi-title" style="color:#34d399">Leading</span>
+              <span class="kpi-pos mono">Top-Right</span>
+            </div>
+            <div class="kpi-sub">Outperforming + Rising Momentum</div>
+          </div>
+          <div>
+            <div id="kpi-count-Leading" class="kpi-count mono">0</div>
+            <div id="kpi-pct-Leading" class="kpi-pct mono text-pos">0%</div>
+          </div>
+        </div>
+        <div id="kpi-tags-Leading" class="kpi-tags"></div>
+      </button>
+
+      <button class="kpi-card" data-quadrant="Weakening">
+        <div class="kpi-top">
+          <div>
+            <div class="kpi-label-row">
+              <span class="kpi-dot" style="background:var(--q-weakening);box-shadow:0 0 8px rgba(245,158,11,0.75)"></span>
+              <span class="kpi-title" style="color:#fbbf24">Weakening</span>
+              <span class="kpi-pos mono">Bottom-Right</span>
+            </div>
+            <div class="kpi-sub">Outperforming + Cooling Momentum</div>
+          </div>
+          <div>
+            <div id="kpi-count-Weakening" class="kpi-count mono">0</div>
+            <div id="kpi-pct-Weakening" class="kpi-pct mono text-amber">0%</div>
+          </div>
+        </div>
+        <div id="kpi-tags-Weakening" class="kpi-tags"></div>
+      </button>
+
+      <button class="kpi-card" data-quadrant="Lagging">
+        <div class="kpi-top">
+          <div>
+            <div class="kpi-label-row">
+              <span class="kpi-dot" style="background:var(--q-lagging);box-shadow:0 0 8px rgba(244,63,94,0.75)"></span>
+              <span class="kpi-title" style="color:#fb7185">Lagging</span>
+              <span class="kpi-pos mono">Bottom-Left</span>
+            </div>
+            <div class="kpi-sub">Underperforming + Weak Momentum</div>
+          </div>
+          <div>
+            <div id="kpi-count-Lagging" class="kpi-count mono">0</div>
+            <div id="kpi-pct-Lagging" class="kpi-pct mono text-neg">0%</div>
+          </div>
+        </div>
+        <div id="kpi-tags-Lagging" class="kpi-tags"></div>
+      </button>
+
+      <button class="kpi-card" data-quadrant="Improving">
+        <div class="kpi-top">
+          <div>
+            <div class="kpi-label-row">
+              <span class="kpi-dot" style="background:var(--q-improving);box-shadow:0 0 8px rgba(99,102,241,0.8)"></span>
+              <span class="kpi-title" style="color:#a5b4fc">Improving</span>
+              <span class="kpi-pos mono">Top-Left</span>
+            </div>
+            <div class="kpi-sub">Underperforming + Rising Momentum</div>
+          </div>
+          <div>
+            <div id="kpi-count-Improving" class="kpi-count mono">0</div>
+            <div id="kpi-pct-Improving" class="kpi-pct mono text-indigo">0%</div>
+          </div>
+        </div>
+        <div id="kpi-tags-Improving" class="kpi-tags"></div>
+      </button>
+    </section>
+
+    <!-- 3. MAIN TWO-COLUMN WORKSPACE: RRG CHART (LEFT) + INSPECTOR (RIGHT) -->
+    <section class="workspace-grid">
+
+      <!-- LEFT: HIGH-DPI SVG RELATIVE ROTATION GRAPH -->
+      <div class="card" style="display:flex;flex-direction:column;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">
+              <span>Relative Rotation Graph (RRG)</span>
+              <span id="chart-tf-pill" class="pill pill-blue mono">Daily EOD · 6-Period Tail</span>
+              <span id="active-filter-pill" class="pill pill-blue hidden">
+                <span>Quadrant: <strong id="active-filter-name"></strong></span>
+                <span id="btn-clear-filter" style="cursor:pointer;margin-left:4px;font-weight:700" title="Clear quadrant filter">✕</span>
+              </span>
+            </h2>
+            <p class="card-subtitle">
+              Hover any node or trail to dim others · Benchmark: <span id="chart-bench-label" class="mono" style="color:#e5e7eb;font-weight:600;">NIFTY 50</span> · Keyboard: ←/→ scrub, Space play
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button id="btn-reset-chart" class="btn btn-sm btn-ghost">Reset View</button>
+          </div>
+        </div>
+
+        <!-- Tail Length Slider & 30-Period Animate Scrubber -->
+        <div class="rrg-controls">
+          <div class="slider-box">
+            <label for="tail-slider">Tail Length</label>
+            <input id="tail-slider" class="rrg-slider" type="range" min="3" max="10" value="6" style="width:78px;" />
+            <span id="tail-val" class="mono text-blue" style="font-weight:700;min-width:16px;text-align:right;">6</span>
+          </div>
+
+          <div class="slider-box" style="flex:1;max-width:460px;justify-content:space-between;">
+            <button id="btn-animate" class="btn btn-sm btn-emerald" style="padding:4px 10px;">
+              <svg id="icon-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="icon-pause" class="hidden" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+              <span id="animate-label">Animate</span>
+            </button>
+            <input id="date-scrubber" class="rrg-slider" type="range" min="0" max="29" value="29" style="flex:1;min-width:95px;" aria-label="Replay rotation across last 30 periods" />
+            <span id="scrubber-date" class="mono" style="color:#f3f4f6;font-weight:600;white-space:nowrap;">20 Nov 2026</span>
+          </div>
+        </div>
+
+        <!-- SVG Stage -->
+        <div id="rrg-stage" class="rrg-stage">
+          <svg id="rrg-svg" role="img" aria-label="NSE Sector and Theme Relative Rotation Graph"></svg>
+          <div id="rrg-tooltip" class="rrg-tooltip hidden"></div>
+        </div>
+
+        <!-- Plotted Series Toggle Chips -->
+        <div class="chips-footer">
+          <div class="chips-header">
+            <span>Plotted in Category (<span id="visible-count">26</span>/<span id="total-count">26</span>)</span>
+            <div style="display:flex;gap:6px;">
+              <button id="btn-select-all" class="btn btn-sm btn-ghost">Show All</button>
+              <button id="btn-select-top5" class="btn btn-sm btn-ghost" style="color:#34d399;">Top 5 RS</button>
+              <button id="btn-select-clear" class="btn btn-sm btn-ghost" style="color:#fb7185;">Hide All</button>
+            </div>
+          </div>
+          <div id="sector-chips" class="chips-wrap"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: SECTOR / THEME INSPECTOR -->
+      <aside class="card" style="display:flex;flex-direction:column;">
+        <div class="card-header">
+          <div style="min-width:0;">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:4px;">
+              <span id="insp-cat-badge" class="pill pill-cat-core">Core Sector</span>
+              <span id="insp-proxy-badge" class="pill pill-proxy mono hidden">ETF: MODEFENCE.NS</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span id="insp-dot" style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:#10b981;"></span>
+              <h2 id="insp-name" class="card-title" style="font-size:15.5px;">NIFTY BANK</h2>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div id="insp-rank" class="mono" style="font-size:11px;color:var(--text-secondary);">Rank #1</div>
+            <div id="insp-close" class="mono" style="font-size:15px;font-weight:700;color:#ffffff;">₹52,410.00</div>
+          </div>
+        </div>
+
+        <div class="inspector-body">
+          <!-- Valid History Days / Partial History Flag -->
+          <div id="insp-history-notice" class="history-notice mono">
+            <span id="insp-history-label">History: 500 trading days</span>
+            <span id="insp-history-badge" style="font-weight:700;">Full 2Y</span>
+          </div>
+
+          <!-- Quadrant & Shift Arrow -->
+          <div class="inset-box">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);">
+              <span>Quadrant Shift (<span id="insp-prev-label">Prev Session</span>)</span>
+              <span id="insp-date" class="mono">20 Nov 2026</span>
+            </div>
+            <div class="transition-row">
+              <span id="insp-prev-quad" class="pill pill-Improving">Improving</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              <span id="insp-curr-quad" class="pill pill-Leading">Leading</span>
+            </div>
+            <p id="insp-signal" class="signal-desc"></p>
+          </div>
+
+          <!-- RS-Ratio & RS-Momentum -->
+          <div class="metric-grid-2">
+            <div class="inset-box">
+              <div class="metric-label">RS-Ratio</div>
+              <div class="metric-val-row mono">
+                <span id="insp-rs-ratio" class="metric-val">101.40</span>
+                <span id="insp-rs-ratio-delta" style="font-size:11.5px;font-weight:600;">+0.25</span>
+              </div>
+            </div>
+            <div class="inset-box">
+              <div class="metric-label">RS-Momentum</div>
+              <div class="metric-val-row mono">
+                <span id="insp-rs-mom" class="metric-val">101.10</span>
+                <span id="insp-rs-mom-delta" style="font-size:11.5px;font-weight:600;">+0.18</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10-EMA Distance Indicator -->
+          <div class="inset-box" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div>
+              <div class="metric-label">10-Period EMA Filter</div>
+              <div style="margin-top:4px;display:flex;align-items:center;gap:7px;">
+                <span id="insp-ema-pill" class="pill pill-Leading">Above 10 EMA</span>
+                <span id="insp-ema-val" class="mono" style="font-size:11px;color:var(--text-secondary);">EMA: --</span>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div class="metric-label">vs 10-EMA</div>
+              <div id="insp-ema-dist" class="mono" style="font-size:15px;font-weight:700;margin-top:2px;">+1.45%</div>
+            </div>
+          </div>
+
+          <!-- 1D / 1W / 1M / 3M Return Cards -->
+          <div class="return-pills-grid">
+            <div class="ret-pill-box">
+              <div class="ret-pill-label">1D %</div>
+              <div id="insp-ret-1d" class="ret-pill-val mono">--</div>
+            </div>
+            <div class="ret-pill-box">
+              <div class="ret-pill-label">1W %</div>
+              <div id="insp-ret-1w" class="ret-pill-val mono">--</div>
+            </div>
+            <div class="ret-pill-box">
+              <div class="ret-pill-label">1M %</div>
+              <div id="insp-ret-1m" class="ret-pill-val mono">--</div>
+            </div>
+            <div class="ret-pill-box">
+              <div class="ret-pill-label">3M %</div>
+              <div id="insp-ret-3m" class="ret-pill-val mono">--</div>
+            </div>
+          </div>
+
+          <!-- 12-Period Dual RS-Ratio & RS-Momentum SVG Sparkline -->
+          <div class="inset-box">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:600;color:#d1d5db;">12-Period RS History</span>
+              <div class="mono" style="display:flex;gap:10px;font-size:10px;">
+                <span style="color:#38bdf8;">— RS-Ratio</span>
+                <span style="color:#fbbf24;">— RS-Mom</span>
+              </div>
+            </div>
+            <div class="sparkline-box">
+              <svg id="insp-sparkline-svg"></svg>
+            </div>
+            <div id="insp-spark-readout" class="sparkline-readout mono">
+              <span>Hover sparkline to inspect bar</span>
+              <span>Center: 100.00</span>
+            </div>
+          </div>
+
+          <!-- Top NSE Constituent Stock Chips (Click to Copy) -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="metric-label">Top Constituents / Underlying</span>
+              <span class="mono" style="font-size:10px;color:var(--text-muted);">Click chip to copy</span>
+            </div>
+            <div id="insp-constituents" class="constituents-wrap"></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- 4. BOTTOM FULL-WIDTH SORTABLE RETURN HEATMAP & ROTATION LEADERBOARD -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">
+            <span>Sortable Return Heatmap &amp; Rotation Leaderboard</span>
+            <span id="table-filter-badge" class="pill pill-blue hidden"></span>
+          </h2>
+          <p class="card-subtitle">
+            Click column headers to sort · Click any row to focus on the RRG &amp; Inspector · Partial-history ETFs auto-aligned from listing date
+          </p>
+        </div>
+
+        <div class="table-tools">
+          <div class="search-wrap" style="min-width:200px;max-width:260px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input id="table-search" class="text-input" type="text" placeholder="Filter table rows..." />
+          </div>
+
+          <button id="btn-export-csv" class="btn btn-ghost">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+            </svg>
+            <span>Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="leaderboard">
+          <thead>
+            <tr>
+              <th data-sort="name" class="sortable-th">Name <span class="sort-ind"></span></th>
+              <th data-sort="quadrant" class="sortable-th">Quadrant <span class="sort-ind"></span></th>
+              <th data-sort="rsRatio" class="sortable-th num-right">RS-Ratio <span class="sort-ind"></span></th>
+              <th data-sort="rsMomentum" class="sortable-th num-right">RS-Mom <span class="sort-ind"></span></th>
+              <th data-sort="emaDist" class="sortable-th num-right">vs 10-EMA % <span class="sort-ind"></span></th>
+              <th data-sort="ret1D" class="sortable-th num-right">1D % <span class="sort-ind"></span></th>
+              <th data-sort="ret1W" class="sortable-th num-right">1W % <span class="sort-ind"></span></th>
+              <th data-sort="ret1M" class="sortable-th num-right">1M % <span class="sort-ind"></span></th>
+              <th data-sort="ret3M" class="sortable-th num-right">3M % <span class="sort-ind"></span></th>
+              <th data-sort="historyDays" class="sortable-th num-right">History Days <span class="sort-ind"></span></th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <div>
+        <strong style="color:#d1d5db;">NSE Sector &amp; Theme Rotation Tracker:</strong> Auto-fetches <span class="mono">./eod_data.csv</span> on GitHub Pages (<span class="mono">?csv=...</span> supported). 28 preconfigured symbols + automatic detection for any extra CSV columns. Analytical dashboard only; not SEBI-registered investment advice.
+      </div>
+      <div class="mono">Zero-CDN Client-Side RRG · Daily &amp; Weekly Fri Close</div>
+    </footer>
+  </main>
+
+  <!-- =================================================================== -->
+  <!-- DATA & GITHUB SYNC MODAL (3 CLEAN TABS)                             -->
+  <!-- =================================================================== -->
+  <div id="sync-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-title" style="margin:0;font-size:15.5px;font-weight:700;color:#fff;">Data &amp; GitHub Auto-Sync</h3>
+          <p style="margin:3px 0 0;font-size:12px;color:var(--text-secondary);">
+            Upload/paste EOD prices, configure daily GitHub Actions auto-sync, or browse all 28 preconfigured NSE symbols.
+          </p>
+        </div>
+        <button id="btn-close-modal" class="btn btn-sm btn-ghost" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-tabs" role="tablist">
+        <button id="tab-btn-upload" class="tab-btn active" role="tab" aria-selected="true">1. Upload / Paste EOD</button>
+        <button id="tab-btn-github" class="tab-btn" role="tab" aria-selected="false">2. GitHub Auto-Sync Setup</button>
+        <button id="tab-btn-universe" class="tab-btn" role="tab" aria-selected="false">3. Universe Reference (28)</button>
+      </div>
+
+      <!-- TAB 1: UPLOAD / PASTE EOD -->
+      <div id="tab-panel-upload" class="modal-body">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:11px;background:rgba(56,189,248,0.09);border:1px solid rgba(56,189,248,0.26);">
+          <div style="color:#d1d5db;">
+            <strong style="color:#fff;">Download 28-Column CSV Template:</strong> Includes <span class="mono">Date</span>, <span class="mono">NIFTY 50</span>, <span class="mono">NIFTY 500</span>, 12 Core Sectors, 10 Themes, and 4 Broad/Risk-Off ETFs (with partial-history IPO &amp; Railways blanks).
+          </div>
+          <button id="btn-dl-csv-template" class="btn btn-sm btn-primary">Download CSV Template</button>
+        </div>
+
+        <div id="file-dropzone" class="dropzone">
+          <input id="file-input" type="file" accept=".csv,.json,.txt" class="hidden" />
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.8" style="margin-bottom:5px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+          <div style="font-weight:600;color:#f3f4f6;">Click to choose a file or drag &amp; drop <span class="mono">.csv</span> / <span class="mono">.json</span></div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">
+            Leading empty cells for newer ETFs (<span class="mono">SELECTIPO.NS</span>, <span class="mono">GROWWRAIL.NS</span>) are preserved safely without backfilling.
+          </div>
+        </div>
+
+        <div>
+          <label for="manual-paste-input" style="display:block;font-weight:600;color:#d1d5db;margin-bottom:6px;">
+            Or Paste CSV / JSON Closing History Directly
+          </label>
+          <textarea
+            id="manual-paste-input"
+            class="code-input"
+            placeholder="Date,NIFTY 50,NIFTY 500,NIFTY BANK,...,NIFTY IPO,GOLD ETF&#10;2026-11-20,24312.40,22410.80,52140.15,...,118.45,76.40"></textarea>
+        </div>
+
+        <div id="manual-error-box" class="error-banner hidden"></div>
+      </div>
+
+      <!-- TAB 2: GITHUB AUTO-SYNC SETUP -->
+      <div id="tab-panel-github" class="modal-body hidden">
+        <div class="info-banner">
+          <strong style="color:#7dd3fc;">Zero-Cost Automated Daily Sync (4:15 PM IST Mon–Fri):</strong> Put <span class="mono" style="color:#fff;">index.html</span>, <span class="mono" style="color:#fff;">fetch_eod.py</span>, and <span class="mono" style="color:#fff;">.github/workflows/update-eod.yml</span> in a public GitHub repo and enable GitHub Pages. Actions refreshes <span class="mono" style="color:#fff;">eod_data.csv</span> every weekday after market close.
+        </div>
+
+        <!-- Custom Raw GitHub CSV URL Input + Save & Test -->
+        <div class="inset-box" style="display:flex;flex-direction:column;gap:9px;">
+          <label for="custom-csv-url" style="font-weight:600;color:#e5e7eb;">
+            Custom GitHub Raw CSV URL <span style="color:var(--text-muted);font-weight:400;">(Optional — saved in localStorage)</span>
+          </label>
+          <input
+            id="custom-csv-url"
+            class="text-input text-input-plain mono"
+            type="url"
+            placeholder="https://raw.githubusercontent.com/<username>/<repo>/main/eod_data.csv"
+          />
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;">
+            <span style="font-size:11px;color:var(--text-muted);">
+              Also supports <span class="mono" style="color:#d1d5db;">?csv=https://...</span> in the browser URL.
+            </span>
+            <div style="display:flex;gap:8px;">
+              <button id="btn-reset-csv-url" class="btn btn-sm btn-ghost">Reset to ./eod_data.csv</button>
+              <button id="btn-save-test-url" class="btn btn-sm btn-emerald">Save &amp; Test</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="github-error-box" class="error-banner hidden"></div>
+
+        <!-- Ready-to-use fetch_eod.py (Copy + Download) -->
+        <details class="code-disclosure" open>
+          <summary>
+            <span>📄 <span class="mono">fetch_eod.py</span> — All 28 Active Tickers, ffill() Only, Health Summary</span>
+            <div style="display:flex;gap:6px;">
+              <button type="button" id="btn-copy-py" class="btn btn-sm btn-ghost">Copy</button>
+              <button type="button" id="btn-dl-py" class="btn btn-sm btn-primary">Download fetch_eod.py</button>
+            </div>
+          </summary>
+          <div class="code-box-wrap">
+            <pre id="code-fetch-py" class="code-snippet"></pre>
+          </div>
+        </details>
+
+        <!-- Ready-to-use .github/workflows/update-eod.yml (Copy + Download) -->
+        <details class="code-disclosure">
+          <summary>
+            <span>⚙️ <span class="mono">.github/workflows/update-eod.yml</span> — 4:15 PM IST Cron + Holiday Guard</span>
+            <div style="display:flex;gap:6px;">
+              <button type="button" id="btn-copy-yml" class="btn btn-sm btn-ghost">Copy</button>
+              <button type="button" id="btn-dl-yml" class="btn btn-sm btn-primary">Download update-eod.yml</button>
+            </div>
+          </summary>
+          <div class="code-box-wrap">
+            <pre id="code-workflow-yml" class="code-snippet"></pre>
+          </div>
+        </details>
+      </div>
+
+      <!-- TAB 3: UNIVERSE REFERENCE (28 SYMBOLS) -->
+      <div id="tab-panel-universe" class="modal-body hidden">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="color:var(--text-secondary);">
+            All <strong style="color:#fff;">28 preconfigured columns</strong> (2 Benchmarks + 12 Core Sectors + 10 Themes + 4 Broad/Risk-Off ETFs). Click any ticker to copy.
+          </div>
+          <div class="search-wrap" style="max-width:250px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input id="universe-search" class="text-input" type="text" placeholder="Search symbol or ticker..." />
+          </div>
+        </div>
+
+        <div class="table-scroll" style="border:1px solid var(--border-default);border-radius:11px;max-height:380px;overflow-y:auto;">
+          <table class="ref-table">
+            <thead>
+              <tr>
+                <th>CSV Column Name</th>
+                <th>Yahoo Finance Ticker</th>
+                <th>Category</th>
+                <th>Top Constituents / Notes</th>
+              </tr>
+            </thead>
+            <tbody id="universe-ref-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-restore-demo" class="btn btn-sm btn-ghost">Reset to Demo Data</button>
+        <div style="display:flex;gap:8px;">
+          <button id="btn-cancel-modal" class="btn btn-sm btn-ghost">Close</button>
+          <button id="btn-apply-manual" class="btn btn-sm btn-emerald">Apply Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Stack -->
+  <div id="toast-stack" class="toast-stack"></div>
+
+  <!-- =================================================================== -->
+  <!-- PURE VANILLA JS: PARTIAL-HISTORY SAFE RRG ENGINE & INTERACTIVE UI   -->
+  <!-- =================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* -----------------------------------------------------------------
+       * 1. COMPLETE PRECONFIGURED UNIVERSE (2 BENCHMARKS + 26 SERIES = 28)
+       * ----------------------------------------------------------------- */
+      const BENCHMARK_PRIMARY = 'NIFTY 50';
+      const BENCHMARK_SECONDARY = 'NIFTY 500';
+      const BENCHMARK_SET = new Set([BENCHMARK_PRIMARY, BENCHMARK_SECONDARY]);
+      const STORAGE_KEY_URL = 'nse_rrg_theme_custom_csv_url_v3';
+      const DEFAULT_CSV_PATH = './eod_data.csv';
+
+      const BENCHMARK_DEFS = [
+        { id: 'NIFTY 50', ticker: '^NSEI', category: 'benchmark', notes: 'Primary NSE Large-Cap Benchmark (50 stocks)' },
+        { id: 'NIFTY 500', ticker: '^CNX500', category: 'benchmark', notes: 'Broad NSE Market Benchmark (500 stocks)' }
+      ];
+
+      const PRECONFIGURED_SERIES = [
+        // --- CATEGORY: core (12 Core NSE Sectors) ---
+        {
+          id: 'NIFTY BANK', short: 'BANK', ticker: '^NSEBANK', category: 'core', isEtfProxy: false, color: '#10b981',
+          basePrice: 46800, constituents: ['HDFCBANK', 'ICICIBANK', 'SBIN', 'KOTAKBANK', 'AXISBANK'],
+          phase: 0.35, freq: 0.044, amp: 0.068, drift: 0.00030, vol: 0.0074
+        },
+        {
+          id: 'NIFTY IT', short: 'IT', ticker: '^CNXIT', category: 'core', isEtfProxy: false, color: '#38bdf8',
+          basePrice: 36900, constituents: ['TCS', 'INFY', 'HCLTECH', 'WIPRO', 'TECHM'],
+          phase: 5.15, freq: 0.042, amp: 0.082, drift: 0.00024, vol: 0.0088
+        },
+        {
+          id: 'NIFTY PHARMA', short: 'PHARMA', ticker: '^CNXPHARMA', category: 'core', isEtfProxy: false, color: '#a78bfa',
+          basePrice: 20400, constituents: ['SUNPHARMA', 'CIPLA', 'DRREDDY', 'DIVISLAB', 'LUPIN'],
+          phase: 0.85, freq: 0.040, amp: 0.070, drift: 0.00038, vol: 0.0068
+        },
+        {
+          id: 'NIFTY AUTO', short: 'AUTO', ticker: '^CNXAUTO', category: 'core', isEtfProxy: false, color: '#f59e0b',
+          basePrice: 22100, constituents: ['M&M', 'MARUTI', 'TATAMOTORS', 'BAJAJ-AUTO', 'EICHERMOT'],
+          phase: 1.95, freq: 0.045, amp: 0.076, drift: 0.00018, vol: 0.0080
+        },
+        {
+          id: 'NIFTY FMCG', short: 'FMCG', ticker: '^CNXFMCG', category: 'core', isEtfProxy: false, color: '#fb7185',
+          basePrice: 55800, constituents: ['ITC', 'HINDUNILVR', 'NESTLEIND', 'BRITANNIA', 'TATACONSUM'],
+          phase: 3.65, freq: 0.039, amp: 0.058, drift: -0.00010, vol: 0.0060
+        },
+        {
+          id: 'NIFTY METAL', short: 'METAL', ticker: '^CNXMETAL', category: 'core', isEtfProxy: false, color: '#2dd4bf',
+          basePrice: 8950, constituents: ['TATASTEEL', 'HINDALCO', 'JSWSTEEL', 'VEDL', 'JINDALSTEL'],
+          phase: 5.55, freq: 0.048, amp: 0.094, drift: 0.00025, vol: 0.0105
+        },
+        {
+          id: 'NIFTY ENERGY', short: 'ENERGY', ticker: '^CNXENERGY', category: 'core', isEtfProxy: false, color: '#f97316',
+          basePrice: 39400, constituents: ['RELIANCE', 'NTPC', 'ONGC', 'POWERGRID', 'BPCL'],
+          phase: 2.75, freq: 0.043, amp: 0.068, drift: -0.00004, vol: 0.0076
+        },
+        {
+          id: 'NIFTY REALTY', short: 'REALTY', ticker: '^CNXREALTY', category: 'core', isEtfProxy: false, color: '#c084fc',
+          basePrice: 985, constituents: ['DLF', 'MACROTECH', 'GODREJPROP', 'OBEROIRLTY', 'PHOENIXLTD'],
+          phase: 1.48, freq: 0.047, amp: 0.108, drift: 0.00032, vol: 0.0118
+        },
+        {
+          id: 'NIFTY PSU BANK', short: 'PSUBANK', ticker: '^CNXPSUBANK', category: 'core', isEtfProxy: false, color: '#34d399',
+          basePrice: 6420, constituents: ['SBIN', 'BANKBARODA', 'PNB', 'CANBK', 'UNIONBANK'],
+          phase: 4.82, freq: 0.049, amp: 0.090, drift: 0.00016, vol: 0.0108
+        },
+        {
+          id: 'NIFTY MEDIA', short: 'MEDIA', ticker: '^CNXMEDIA', category: 'core', isEtfProxy: false, color: '#ef4444',
+          basePrice: 2090, constituents: ['ZEEL', 'SUNTV', 'PVRINOX', 'NAZARA', 'SAREGAMA'],
+          phase: 3.92, freq: 0.046, amp: 0.086, drift: -0.00030, vol: 0.0112
+        },
+        {
+          id: 'NIFTY INFRA', short: 'INFRA', ticker: '^CNXINFRA', category: 'core', isEtfProxy: false, color: '#a3e635',
+          basePrice: 8620, constituents: ['LT', 'RELIANCE', 'BHARTIARTL', 'NTPC', 'ULTRACEMCO'],
+          phase: 2.28, freq: 0.043, amp: 0.065, drift: 0.00016, vol: 0.0074
+        },
+        {
+          id: 'NIFTY FIN SERVICE', short: 'FINSERV', ticker: 'NIFTY_FIN_SERVICE.NS', category: 'core', isEtfProxy: false, color: '#60a5fa',
+          basePrice: 22900, constituents: ['HDFCBANK', 'ICICIBANK', 'BAJFINANCE', 'SBIN', 'JIOFIN'],
+          phase: 0.58, freq: 0.044, amp: 0.064, drift: 0.00033, vol: 0.0070
+        },
+
+        // --- CATEGORY: theme (10 NSE Thematic Indices via ETF Proxies) ---
+        {
+          id: 'NIFTY DEFENCE', short: 'DEFENCE', ticker: 'MODEFENCE.NS', category: 'theme', isEtfProxy: true, color: '#06b6d4',
+          basePrice: 74.5, constituents: ['HAL', 'BEL', 'MAZDOCK', 'BDL', 'SOLARINDS'],
+          phase: 5.75, freq: 0.047, amp: 0.116, drift: 0.00050, vol: 0.0124
+        },
+        {
+          id: 'NIFTY IPO', short: 'IPO', ticker: 'SELECTIPO.NS', category: 'theme', isEtfProxy: true, color: '#d946ef',
+          basePrice: 100.0, constituents: ['ETERNAL', 'SWIGGY', 'BAJAJHFL', 'HYUNDAI', 'WAAREEENER'],
+          startDate: '2025-03-03', // Realistic partial history starting Mar 2025
+          phase: 0.15, freq: 0.050, amp: 0.104, drift: 0.00045, vol: 0.0118
+        },
+        {
+          id: 'NIFTY CAPITAL MKTS', short: 'CAPMKTS', ticker: 'MOCAPITAL.NS', category: 'theme', isEtfProxy: true, color: '#22c55e',
+          basePrice: 44.2, constituents: ['BSE', 'CDSL', 'MCX', 'HDFCAMC', 'ANGELONE'],
+          phase: 0.68, freq: 0.048, amp: 0.112, drift: 0.00052, vol: 0.0120
+        },
+        {
+          id: 'NIFTY EV & AUTO', short: 'EV&AUTO', ticker: 'EVINDIA.NS', category: 'theme', isEtfProxy: true, color: '#84cc16',
+          basePrice: 36.8, constituents: ['M&M', 'TATAMOTORS', 'BAJAJ-AUTO', 'EXIDEIND', 'OLAELEC'],
+          phase: 1.72, freq: 0.045, amp: 0.095, drift: 0.00028, vol: 0.0104
+        },
+        {
+          id: 'NIFTY CPSE', short: 'CPSE', ticker: 'CPSEETF.NS', category: 'theme', isEtfProxy: true, color: '#fb923c',
+          basePrice: 91.5, constituents: ['NTPC', 'ONGC', 'POWERGRID', 'COALINDIA', 'BEL'],
+          phase: 2.95, freq: 0.043, amp: 0.085, drift: 0.00018, vol: 0.0092
+        },
+        {
+          id: 'NIFTY RAILWAYS', short: 'RAILWAYS', ticker: 'GROWWRAIL.NS', category: 'theme', isEtfProxy: true, color: '#f43f5e',
+          basePrice: 10.4, constituents: ['IRFC', 'RVNL', 'IRCTC', 'CONCOR', 'TITAGARH'],
+          startDate: '2025-02-03', // Realistic partial history starting Feb 2025
+          phase: 4.55, freq: 0.049, amp: 0.118, drift: 0.00022, vol: 0.0128
+        },
+        {
+          id: 'NIFTY MANUFACTURING', short: 'MFG', ticker: 'MAKEINDIA.NS', category: 'theme', isEtfProxy: true, color: '#14b8a6',
+          basePrice: 142.0, constituents: ['SUNPHARMA', 'M&M', 'MARUTI', 'TATASTEEL', 'BEL'],
+          phase: 1.25, freq: 0.041, amp: 0.072, drift: 0.00030, vol: 0.0080
+        },
+        {
+          id: 'NIFTY TOURISM', short: 'TOURISM', ticker: 'MOTOUR.NS', category: 'theme', isEtfProxy: true, color: '#ec4899',
+          basePrice: 28.6, constituents: ['INDIGO', 'INDHOTEL', 'IRCTC', 'JUBLFOOD', 'GMRINFRA'],
+          phase: 5.95, freq: 0.044, amp: 0.088, drift: 0.00034, vol: 0.0096
+        },
+        {
+          id: 'NIFTY CONSUMPTION', short: 'CONSUMP', ticker: 'CONSUMBEES.NS', category: 'theme', isEtfProxy: true, color: '#818cf8',
+          basePrice: 118.5, constituents: ['BHARTIARTL', 'ITC', 'M&M', 'TITAN', 'TRENT'],
+          phase: 3.15, freq: 0.040, amp: 0.064, drift: 0.00014, vol: 0.0072
+        },
+        {
+          id: 'NIFTY DIGITAL', short: 'DIGITAL', ticker: 'TNIDETF.NS', category: 'theme', isEtfProxy: true, color: '#0ea5e9',
+          basePrice: 88.0, constituents: ['NAUKRI', 'ETERNAL', 'TCS', 'INFY', 'PAYTM'],
+          phase: 5.38, freq: 0.046, amp: 0.096, drift: 0.00035, vol: 0.0102
+        },
+
+        // --- CATEGORY: broad (4 Broad Market & Risk-Off Metals via ETF Proxies) ---
+        {
+          id: 'NIFTY MIDCAP 150', short: 'MID150', ticker: 'MID150BEES.NS', category: 'broad', isEtfProxy: true, color: '#eab308',
+          basePrice: 192.4, constituents: ['MAXHEALTH', 'SUZLON', 'CUMMINSIND', 'PERSISTENT', 'DIXON'],
+          phase: 1.08, freq: 0.042, amp: 0.075, drift: 0.00042, vol: 0.0085
+        },
+        {
+          id: 'NIFTY SMALLCAP 250', short: 'SML250', ticker: 'HDFCSML250.NS', category: 'broad', isEtfProxy: true, color: '#ff6b6b',
+          basePrice: 158.8, constituents: ['MCX', 'CDSL', 'KPITTECH', 'CAMS', 'LAURUSLABS'],
+          phase: 2.45, freq: 0.046, amp: 0.092, drift: 0.00036, vol: 0.0102
+        },
+        {
+          id: 'GOLD ETF', short: 'GOLD', ticker: 'GOLDBEES.NS', category: 'broad', isEtfProxy: true, proxyKind: 'Commodity Risk-Off ETF', color: '#facc15',
+          basePrice: 64.5, constituents: ['Physical Gold (MCX / Domestic Spot)'],
+          phase: 4.15, freq: 0.036, amp: 0.078, drift: 0.00038, vol: 0.0078
+        },
+        {
+          id: 'SILVER ETF', short: 'SILVER', ticker: 'SILVERBEES.NS', category: 'broad', isEtfProxy: true, proxyKind: 'Commodity Risk-Off ETF', color: '#cbd5e1',
+          basePrice: 86.2, constituents: ['Physical Silver (MCX / Domestic Spot)'],
+          phase: 4.42, freq: 0.041, amp: 0.110, drift: 0.00044, vol: 0.0122
+        }
+      ];
+
+      // Automatic header normalization if user uploads raw Yahoo tickers
+      const HEADER_ALIASES = {};
+      BENCHMARK_DEFS.forEach((b) => {
+        HEADER_ALIASES[b.ticker.toUpperCase()] = b.id;
+        HEADER_ALIASES[b.id.replace(/\s+/g, '').toUpperCase()] = b.id;
+      });
+      PRECONFIGURED_SERIES.forEach((s) => {
+        HEADER_ALIASES[s.ticker.toUpperCase()] = s.id;
+        HEADER_ALIASES[s.id.toUpperCase()] = s.id;
+      });
+      HEADER_ALIASES['^CNXFINANCE'] = 'NIFTY FIN SERVICE';
+
+      const EXTRA_COLORS = ['#22d3ee', '#a855f7', '#fb923c', '#4ade80', '#f472b6', '#fde047', '#38bdf8', '#e879f9'];
+
+      const CATEGORY_META = {
+        core: { label: 'Core Sector', pillClass: 'pill-cat-core' },
+        theme: { label: 'Theme', pillClass: 'pill-cat-theme' },
+        broad: { label: 'Broad & Risk-Off', pillClass: 'pill-cat-broad' }
+      };
+
+      const QUADRANT_INFO = {
+        Leading: {
+          color: '#10b981',
+          signal: 'Institutional leadership: outperforming the benchmark with positive momentum. Constructive zone for trend-following pullbacks.'
+        },
+        Weakening: {
+          color: '#f59e0b',
+          signal: 'Momentum cooling: still outperforming overall, but relative velocity is decelerating. Tighten trailing stops or watch for rotation out.'
+        },
+        Lagging: {
+          color: '#f43f5e',
+          signal: 'Relative weakness: underperforming with negative momentum. Wait for RS-Momentum to curl upward before anticipating a turn.'
+        },
+        Improving: {
+          color: '#6366f1',
+          signal: 'Early rotation watch: still below 100 RS-Ratio, but momentum has turned positive — watch for a clockwise cross into Leading.'
+        }
+      };
+
+      // Complete, ready-to-use fetch_eod.py with ALL 28 active tickers, ffill() only, and health log
+      const FETCH_EOD_PY = `import pandas as pd
+import yfinance as yf
+
+# Complete 28-column NSE Sector & Theme Rotation Universe
+TICKERS = {
+    # Benchmarks (2)
+    "^NSEI": "NIFTY 50",
+    "^CNX500": "NIFTY 500",
+
+    # Core NSE Sectors (12)
+    "^NSEBANK": "NIFTY BANK",
+    "^CNXIT": "NIFTY IT",
+    "^CNXPHARMA": "NIFTY PHARMA",
+    "^CNXAUTO": "NIFTY AUTO",
+    "^CNXFMCG": "NIFTY FMCG",
+    "^CNXMETAL": "NIFTY METAL",
+    "^CNXENERGY": "NIFTY ENERGY",
+    "^CNXREALTY": "NIFTY REALTY",
+    "^CNXPSUBANK": "NIFTY PSU BANK",
+    "^CNXMEDIA": "NIFTY MEDIA",
+    "^CNXINFRA": "NIFTY INFRA",
+    "NIFTY_FIN_SERVICE.NS": "NIFTY FIN SERVICE",
+
+    # NSE Thematic Indices via Liquid ETF Proxies (10)
+    "MODEFENCE.NS": "NIFTY DEFENCE",
+    "SELECTIPO.NS": "NIFTY IPO",
+    "MOCAPITAL.NS": "NIFTY CAPITAL MKTS",
+    "EVINDIA.NS": "NIFTY EV & AUTO",
+    "CPSEETF.NS": "NIFTY CPSE",
+    "GROWWRAIL.NS": "NIFTY RAILWAYS",
+    "MAKEINDIA.NS": "NIFTY MANUFACTURING",
+    "MOTOUR.NS": "NIFTY TOURISM",
+    "CONSUMBEES.NS": "NIFTY CONSUMPTION",
+    "TNIDETF.NS": "NIFTY DIGITAL",
+
+    # Broad Market & Risk-Off Metals via ETF Proxies (4)
+    "MID150BEES.NS": "NIFTY MIDCAP 150",
+    "HDFCSML250.NS": "NIFTY SMALLCAP 250",
+    "GOLDBEES.NS": "GOLD ETF",
+    "SILVERBEES.NS": "SILVER ETF",
+}
+
+
+def main():
+    raw = yf.download(
+        list(TICKERS.keys()),
+        period="2y",
+        interval="1d",
+        auto_adjust=True,
+        progress=False,
+    )
+    closes = raw["Close"].rename(columns=TICKERS)
+    closes.index = pd.to_datetime(closes.index).strftime("%Y-%m-%d")
+    closes.index.name = "Date"
+
+    # Skip any symbol that returned zero data so one bad ticker never crashes the pipeline
+    valid_cols = [c for c in TICKERS.values() if c in closes.columns and closes[c].notna().any()]
+    skipped = [c for c in TICKERS.values() if c not in valid_cols]
+
+    if "NIFTY 50" not in valid_cols:
+        raise RuntimeError("Benchmark NIFTY 50 (^NSEI) returned no data. Aborting CSV overwrite.")
+
+    # Drop only rows where NIFTY 50 did not trade; use ffill() WITHOUT bfill()
+    # so newer ETFs (SELECTIPO.NS, GROWWRAIL.NS) keep leading blanks prior to listing.
+    closes = closes[valid_cols].dropna(subset=["NIFTY 50"]).ffill().round(2)
+    closes.to_csv("eod_data.csv")
+
+    # Summary health log for GitHub Actions output
+    total_days = len(closes)
+    partial_cols = [
+        f"{c} ({int(closes[c].notna().sum())}d)"
+        for c in valid_cols
+        if closes[c].notna().sum() < total_days
+    ]
+    print("=== NSE EOD Sector & Theme Fetch Health Summary ===")
+    print(f"Latest trading date : {closes.index[-1]}")
+    print(f"Total trading days  : {total_days}")
+    print(f"Active columns      : {len(valid_cols)}/{len(TICKERS)}")
+    if partial_cols:
+        print(f"Partial-history ETFs: {', '.join(partial_cols)}")
+    if skipped:
+        print(f"WARNING Skipped     : {', '.join(skipped)}")
+
+
+if __name__ == "__main__":
+    main()
+`;
+
+      // Complete, ready-to-use GitHub Actions workflow YAML
+      const WORKFLOW_YML = `name: Update NSE EOD Sector & Theme Data
+
+on:
+  schedule:
+    # 10:45 UTC = 4:15 PM IST, Monday to Friday
+    - cron: '45 10 * * 1-5'
+  workflow_dispatch: # Trigger manually anytime from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-eod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Fetch NSE closing prices (28 symbols)
+        run: python fetch_eod.py
+
+      - name: Commit and push if updated (holiday-safe)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add eod_data.csv
+          git diff --staged --quiet || (git commit -m "Update NSE EOD sector & theme data" && git push)
+`;
+
+      /* -----------------------------------------------------------------
+       * 2. DYNAMIC METADATA REGISTRY (AUTO-ADDS EXTRA CSV COLUMNS TO theme)
+       * ----------------------------------------------------------------- */
+      const seriesMetaMap = new Map();
+      PRECONFIGURED_SERIES.forEach((s) => seriesMetaMap.set(s.id, s));
+
+      function getSeriesMeta(seriesId) {
+        if (seriesMetaMap.has(seriesId)) return seriesMetaMap.get(seriesId);
+        const idx = seriesMetaMap.size % EXTRA_COLORS.length;
+        const cleanShort = seriesId.replace(/^NIFTY\s+/i, '').replace(/[^A-Z0-9&]/gi, '').slice(0, 8).toUpperCase();
+        const created = {
+          id: seriesId,
+          short: cleanShort || seriesId.slice(0, 7).toUpperCase(),
+          ticker: 'Custom CSV',
+          category: 'theme',
+          isEtfProxy: false,
+          color: EXTRA_COLORS[idx],
+          constituents: ['Custom CSV Series']
+        };
+        seriesMetaMap.set(seriesId, created);
+        return created;
+      }
+
+      /* -----------------------------------------------------------------
+       * 3. DETERMINISTIC 500-DAY (2-YEAR) SIMULATED NSE DATASET
+       *    Includes NIFTY 50, NIFTY 500, 12 core, 10 themes, 4 broad/risk-off
+       *    Partial history: NIFTY RAILWAYS (Feb 2025+), NIFTY IPO (Mar 2025+)
+       * ----------------------------------------------------------------- */
+      function mulberry32(seed) {
+        return function () {
+          let t = (seed += 0x6d2b79f5);
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function generateTwoYearDemoDataset() {
+        const rand = mulberry32(20261122);
+        const totalDays = 500;
+
+        // 500 Mon-Fri dates ending Friday, 2026-11-20
+        const dates = [];
+        const cursor = new Date(2026, 10, 20);
+        while (dates.length < totalDays) {
+          const dow = cursor.getDay();
+          if (dow !== 0 && dow !== 6) {
+            const yyyy = cursor.getFullYear();
+            const mm = String(cursor.getMonth() + 1).padStart(2, '0');
+            const dd = String(cursor.getDate()).padStart(2, '0');
+            dates.push(`${yyyy}-${mm}-${dd}`);
+          }
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        dates.reverse();
+
+        function randn() {
+          const u1 = Math.max(1e-7, rand());
+          const u2 = rand();
+          return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        }
+
+        const series = {};
+
+        // Benchmark 1: NIFTY 50
+        const nifty50 = [21980];
+        for (let i = 1; i < totalDays; i++) {
+          const macro = Math.sin(i * 0.024) * 0.0009 + 0.00028;
+          const shock = randn() * 0.0064;
+          nifty50.push(Number((nifty50[i - 1] * (1 + macro + shock)).toFixed(2)));
+        }
+        series[BENCHMARK_PRIMARY] = nifty50;
+
+        // Benchmark 2: NIFTY 500
+        const nifty500 = [20150];
+        for (let i = 1; i < totalDays; i++) {
+          const n50Ret = (nifty50[i] - nifty50[i - 1]) / nifty50[i - 1];
+          const breadthSpread = Math.sin(i * 0.019 + 0.6) * 0.0006 + randn() * 0.0022;
+          nifty500.push(Number((nifty500[i - 1] * (1 + n50Ret * 1.04 + breadthSpread)).toFixed(2)));
+        }
+        series[BENCHMARK_SECONDARY] = nifty500;
+
+        // 26 Plotted Series
+        PRECONFIGURED_SERIES.forEach((sec) => {
+          const arr = new Array(totalDays).fill(null);
+          let startIdx = 0;
+          if (sec.startDate) {
+            const found = dates.findIndex((d) => d >= sec.startDate);
+            startIdx = found >= 0 ? found : 0;
+          }
+          const benchStart = nifty50[startIdx];
+          let idio = 0;
+
+          for (let i = startIdx; i < totalDays; i++) {
+            const tFromEnd = i - (totalDays - 1);
+            const weeklyWave = Math.sin(sec.phase + tFromEnd * (sec.freq * 0.34)) * (sec.amp * 0.88);
+            const dailyWave = Math.sin(sec.phase * 1.15 + tFromEnd * (sec.freq * 1.80)) * (sec.amp * 0.36);
+            const drift = sec.drift * (i - startIdx);
+            idio = idio * 0.90 + randn() * (sec.vol * 0.36);
+
+            const relMult = Math.exp(weeklyWave + dailyWave + drift + idio);
+            const price = sec.basePrice * (nifty50[i] / benchStart) * relMult;
+            arr[i] = Number(Math.max(5, price).toFixed(2));
+          }
+          series[sec.id] = arr;
+        });
+
+        return {
+          mode: 'demo',
+          sourceLabel: 'Demo Data • Simulated 2Y',
+          dates,
+          benchmarks: [BENCHMARK_PRIMARY, BENCHMARK_SECONDARY],
+          seriesIds: PRECONFIGURED_SERIES.map((s) => s.id),
+          series
+        };
+      }
+
+      /* -----------------------------------------------------------------
+       * 4. NaN-SAFE CLIENT-SIDE RRG ENGINE (DAILY & WEEKLY ISO FRI CLOSE)
+       *    Preserves leading nulls cleanly for newer ETFs without backfilling
+       * ----------------------------------------------------------------- */
+      function computeEMA(values, period) {
+        const out = new Array(values.length).fill(0);
+        if (!values.length) return out;
+        const k = 2 / (period + 1);
+        let prev = values[0];
+        out[0] = prev;
+        for (let i = 1; i < values.length; i++) {
+          prev = values[i] * k + prev * (1 - k);
+          out[i] = prev;
+        }
+        return out;
+      }
+
+      function computeRollingSMAStd(values, windowSize) {
+        const n = values.length;
+        const sma = new Array(n).fill(null);
+        const std = new Array(n).fill(null);
+        for (let i = 0; i < n; i++) {
+          if (i < windowSize - 1) continue;
+          let sum = 0;
+          for (let j = i - windowSize + 1; j <= i; j++) sum += values[j];
+          const mean = sum / windowSize;
+          let sq = 0;
+          for (let j = i - windowSize + 1; j <= i; j++) {
+            const d = values[j] - mean;
+            sq += d * d;
+          }
+          sma[i] = mean;
+          std[i] = Math.sqrt(sq / windowSize);
+        }
+        return { sma, std };
+      }
+
+      function classifyQuadrant(rsRatio, rsMom) {
+        if (rsRatio >= 100 && rsMom >= 100) return 'Leading';
+        if (rsRatio >= 100 && rsMom < 100) return 'Weakening';
+        if (rsRatio < 100 && rsMom < 100) return 'Lagging';
+        return 'Improving';
+      }
+
+      function resampleWeekly(dataset) {
+        const { dates, series, benchmarks, seriesIds } = dataset;
+        const weekIndices = [];
+
+        function isoWeekKey(dateStr) {
+          const [y, m, d] = dateStr.split('-').map(Number);
+          const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+          const dayNum = dt.getUTCDay() || 7;
+          dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+          const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+          const weekNo = Math.ceil(((dt - yearStart) / 86400000 + 1) / 7);
+          return `${dt.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+        }
+
+        let currentWk = null;
+        for (let i = 0; i < dates.length; i++) {
+          const wk = isoWeekKey(dates[i]);
+          if (wk !== currentWk) {
+            weekIndices.push(i);
+            currentWk = wk;
+          } else {
+            weekIndices[weekIndices.length - 1] = i;
+          }
+        }
+
+        const wDates = weekIndices.map((idx) => dates[idx]);
+        const wSeries = {};
+        [...benchmarks, ...seriesIds].forEach((col) => {
+          if (series[col]) {
+            wSeries[col] = weekIndices.map((idx) => series[col][idx]);
+          }
+        });
+
+        return {
+          dates: wDates,
+          dailyIndices: weekIndices,
+          seriesIds,
+          series: wSeries
+        };
+      }
+
+      function computeRRGModel(rawDataset, timeframe, benchmarkKey) {
+        const benchCol = rawDataset.series[benchmarkKey] ? benchmarkKey : BENCHMARK_PRIMARY;
+        const tf = timeframe === 'weekly'
+          ? resampleWeekly(rawDataset)
+          : {
+              dates: rawDataset.dates,
+              dailyIndices: rawDataset.dates.map((_, i) => i),
+              seriesIds: rawDataset.seriesIds,
+              series: rawDataset.series
+            };
+
+        const dates = tf.dates;
+        const totalBars = dates.length;
+        const totalDailyDays = rawDataset.dates.length;
+        const benchArr = tf.series[benchCol];
+        const sectors = {};
+        const historyMeta = {};
+        const validIds = [];
+
+        tf.seriesIds.forEach((id) => {
+          const fullPrices = tf.series[id];
+          const dailyPrices = rawDataset.series[id];
+          if (!Array.isArray(fullPrices) || fullPrices.length !== totalBars) return;
+
+          // Daily valid trading days count + first listing date for partial-history reporting
+          let dailyValidCount = 0;
+          let firstListingDate = null;
+          for (let d = 0; d < dailyPrices.length; d++) {
+            const val = dailyPrices[d];
+            if (val !== null && Number.isFinite(val) && val > 0) {
+              if (!firstListingDate) firstListingDate = rawDataset.dates[d];
+              dailyValidCount++;
+            }
+          }
+
+          // Aligned valid timeframe indices where BOTH series & benchmark are positive numbers
+          const alignedIdx = [];
+          const alignedSec = [];
+          const alignedBench = [];
+          for (let i = 0; i < totalBars; i++) {
+            const p = fullPrices[i];
+            const b = benchArr[i];
+            if (p !== null && Number.isFinite(p) && p > 0 && b !== null && Number.isFinite(b) && b > 0) {
+              alignedIdx.push(i);
+              alignedSec.push(p);
+              alignedBench.push(b);
+            }
+          }
+
+          const m = alignedIdx.length;
+          if (m < 6) return;
+
+          validIds.push(id);
+          historyMeta[id] = {
+            dailyDays: dailyValidCount,
+            totalDailyDays,
+            tfBars: m,
+            firstDate: firstListingDate,
+            isPartial: dailyValidCount < totalDailyDays - 5
+          };
+
+          const zWin = Math.min(10, Math.max(4, Math.floor(m / 3)));
+
+          // 1. Raw RS = (Series / Benchmark) * 100
+          const rawRS = alignedSec.map((p, k) => (p / alignedBench[k]) * 100);
+
+          // 2. 5-EMA smoothed RS -> rolling 10-period Z-score centered at 100 for RS-Ratio
+          const rsSmooth = computeEMA(rawRS, 5);
+          const { sma: rsMean, std: rsStd } = computeRollingSMAStd(rsSmooth, zWin);
+          const rsRatioRaw = new Array(m).fill(100);
+          for (let k = 0; k < m; k++) {
+            if (rsMean[k] !== null && rsStd[k] !== null && rsStd[k] > 1e-8) {
+              const z = (rsSmooth[k] - rsMean[k]) / rsStd[k];
+              const clampedZ = Math.max(-3.0, Math.min(3.0, z));
+              rsRatioRaw[k] = 100 + clampedZ * 1.5;
+            }
+          }
+          const rsRatio = computeEMA(rsRatioRaw, 3);
+
+          // 3. Rolling 10-period normalized ROC of RS-Ratio centered at 100 for RS-Momentum
+          const roc = new Array(m).fill(0);
+          for (let k = 1; k < m; k++) {
+            roc[k] = rsRatio[k - 1] !== 0 ? ((rsRatio[k] - rsRatio[k - 1]) / rsRatio[k - 1]) * 100 : 0;
+          }
+          const rocSmooth = computeEMA(roc, 3);
+          const { sma: rocMean, std: rocStd } = computeRollingSMAStd(rocSmooth, zWin);
+          const rsMomRaw = new Array(m).fill(100);
+          for (let k = 0; k < m; k++) {
+            if (rocMean[k] !== null && rocStd[k] !== null && rocStd[k] > 1e-8) {
+              const z = (rocSmooth[k] - rocMean[k]) / rocStd[k];
+              const clampedZ = Math.max(-3.0, Math.min(3.0, z));
+              rsMomRaw[k] = 100 + clampedZ * 1.5;
+            }
+          }
+          const rsMomentum = computeEMA(rsMomRaw, 3);
+
+          // 4. 10-period EMA on timeframe closes
+          const ema10 = computeEMA(alignedSec, 10);
+
+          // 5. Place computed points onto full timeline (null before listing)
+          const points = new Array(totalBars).fill(null);
+          for (let k = 0; k < m; k++) {
+            const barIdx = alignedIdx[k];
+            const dIdx = tf.dailyIndices[barIdx];
+
+            const calcRet = (daysBack) => {
+              const pIdx = dIdx - daysBack;
+              if (pIdx < 0) return null;
+              const nowP = dailyPrices[dIdx];
+              const oldP = dailyPrices[pIdx];
+              if (oldP === null || !Number.isFinite(oldP) || oldP <= 0 || !Number.isFinite(nowP)) return null;
+              return ((nowP - oldP) / oldP) * 100;
+            };
+
+            const rVal = Number(rsRatio[k].toFixed(2));
+            const mVal = Number(rsMomentum[k].toFixed(2));
+            const eVal = ema10[k];
+            const eDist = eVal > 0 ? ((alignedSec[k] - eVal) / eVal) * 100 : 0;
+
+            points[barIdx] = {
+              date: dates[barIdx],
+              close: alignedSec[k],
+              rsRatio: rVal,
+              rsMomentum: mVal,
+              quadrant: classifyQuadrant(rVal, mVal),
+              ema10: eVal,
+              emaAbove: alignedSec[k] >= eVal,
+              emaDist: eDist,
+              ret1D: calcRet(1),
+              ret1W: calcRet(5),
+              ret1M: calcRet(21),
+              ret3M: calcRet(63),
+              score: (rVal - 100) + (mVal - 100) * 0.65,
+              historyDays: dailyValidCount,
+              isPartial: dailyValidCount < totalDailyDays - 5,
+              rank: null,
+              rankTotal: null
+            };
+          }
+
+          sectors[id] = points;
+        });
+
+        // Cross-sectional ranking per bar
+        for (let i = 0; i < totalBars; i++) {
+          const ranked = [];
+          validIds.forEach((id) => {
+            const pt = sectors[id][i];
+            if (pt) ranked.push({ id, score: pt.score });
+          });
+          ranked.sort((a, b) => b.score - a.score);
+          ranked.forEach((item, idx) => {
+            sectors[item.id][i].rank = idx + 1;
+            sectors[item.id][i].rankTotal = ranked.length;
+          });
+        }
+
+        return {
+          timeframe,
+          benchmark: benchCol,
+          dates,
+          totalBars,
+          totalDailyDays,
+          sectorIds: validIds,
+          sectors,
+          historyMeta
+        };
+      }
+
+      /* -----------------------------------------------------------------
+       * 5. ROBUST CSV & JSON PARSER (STRICTLY PRESERVES LEADING NULLS)
+       * ----------------------------------------------------------------- */
+      function normalizeHeaderName(rawHeader) {
+        const cleaned = String(rawHeader || '').replace(/^\uFEFF/, '').replace(/^"|"$/g, '').trim();
+        const upper = cleaned.toUpperCase();
+        if (upper === 'DATE' || upper === 'DATES' || upper === 'TIMESTAMP') return 'Date';
+        if (HEADER_ALIASES[upper]) return HEADER_ALIASES[upper];
+        return cleaned;
+      }
+
+      function parseCSVLine(line) {
+        const cols = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            inQuotes = !inQuotes;
+          } else if (ch === ',' && !inQuotes) {
+            cols.push(cur.trim());
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        cols.push(cur.trim());
+        return cols;
+      }
+
+      function parseNumericCell(val) {
+        if (val === null || val === undefined) return null;
+        const s = String(val).replace(/^"|"$/g, '').replace(/,/g, '').trim();
+        if (!s || /^nan$|^null$|^na$|^n\/a$|^-$|^--$/i.test(s)) return null;
+        const num = Number(s);
+        return Number.isFinite(num) && num > 0 ? num : null;
+      }
+
+      function parseDataPayload(rawText, sourceLabel = 'Live CSV') {
+        const text = String(rawText || '').replace(/^\uFEFF/, '').trim();
+        if (!text) throw new Error('Input is empty. Provide a valid CSV or JSON closing price history.');
+        if (/^<!doctype\s+html|^<html/i.test(text)) {
+          throw new Error('Fetched an HTML page instead of CSV data (eod_data.csv was not found at that URL).');
+        }
+
+        let dates = [];
+        const rawSeries = {};
+
+        if (text.startsWith('{') || text.startsWith('[')) {
+          let parsed;
+          try {
+            parsed = JSON.parse(text);
+          } catch (err) {
+            throw new Error(`Invalid JSON syntax: ${err.message}`);
+          }
+
+          if (!Array.isArray(parsed) && Array.isArray(parsed.dates) && parsed.series) {
+            dates = parsed.dates.map((d) => String(d).trim().slice(0, 10));
+            Object.keys(parsed.series).forEach((k) => {
+              const norm = normalizeHeaderName(k);
+              rawSeries[norm] = parsed.series[k].map(parseNumericCell);
+            });
+          } else if (Array.isArray(parsed) && parsed.length > 0) {
+            const keys = Object.keys(parsed[0]);
+            const dateKey = keys.find((k) => normalizeHeaderName(k) === 'Date');
+            if (!dateKey) throw new Error('JSON array rows must contain a "Date" field.');
+            const valueKeys = keys.filter((k) => k !== dateKey);
+            valueKeys.forEach((k) => (rawSeries[normalizeHeaderName(k)] = []));
+            parsed.forEach((row) => {
+              const d = String(row[dateKey] || '').trim().slice(0, 10);
+              if (!/^\d{4}-\d{2}-\d{2}/.test(d)) return;
+              dates.push(d);
+              valueKeys.forEach((k) => rawSeries[normalizeHeaderName(k)].push(parseNumericCell(row[k])));
+            });
+          } else {
+            throw new Error('Unrecognized JSON schema. Download the CSV template or use { dates, series } format.');
+          }
+        } else {
+          const lines = text.split(/\r\n|\n|\r/).map((l) => l.trim()).filter(Boolean);
+          if (lines.length < 16) {
+            throw new Error(`CSV requires a header row plus at least 15 trading sessions (found ${Math.max(0, lines.length - 1)}).`);
+          }
+
+          const headers = parseCSVLine(lines[0]).map(normalizeHeaderName);
+          const dateIdx = headers.indexOf('Date');
+          if (dateIdx === -1) {
+            throw new Error('CSV header row must contain a "Date" column.');
+          }
+
+          const valueCols = [];
+          headers.forEach((h, idx) => {
+            if (idx !== dateIdx && h) {
+              valueCols.push({ name: h, idx });
+              rawSeries[h] = [];
+            }
+          });
+
+          for (let i = 1; i < lines.length; i++) {
+            const cols = parseCSVLine(lines[i]);
+            const dateStr = (cols[dateIdx] || '').replace(/^"|"$/g, '').trim().slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}/.test(dateStr)) continue;
+            dates.push(dateStr);
+            valueCols.forEach((vc) => {
+              rawSeries[vc.name].push(parseNumericCell(cols[vc.idx]));
+            });
+          }
+        }
+
+        if (dates.length < 15) {
+          throw new Error(`Need at least 15 valid YYYY-MM-DD rows (found ${dates.length}).`);
+        }
+        if (!rawSeries[BENCHMARK_PRIMARY]) {
+          throw new Error('Missing required "NIFTY 50" benchmark column.');
+        }
+
+        // Chronological sort ascending
+        const order = dates.map((d, i) => ({ d, i })).sort((a, b) => a.d.localeCompare(b.d));
+
+        const n50Ordered = order.map((o) => rawSeries[BENCHMARK_PRIMARY][o.i]);
+        const validRowPos = [];
+        let lastN50 = null;
+        for (let k = 0; k < order.length; k++) {
+          if (n50Ordered[k] !== null) {
+            lastN50 = n50Ordered[k];
+            validRowPos.push(k);
+          } else if (lastN50 !== null) {
+            validRowPos.push(k);
+          }
+        }
+
+        const sortedDates = validRowPos.map((k) => order[k].d);
+        const cleanSeries = {};
+
+        // Forward-fill ONLY after each column's first valid date; never backfill leading nulls!
+        Object.keys(rawSeries).forEach((col) => {
+          const out = new Array(validRowPos.length).fill(null);
+          let lastValid = null;
+          let validCount = 0;
+          for (let idx = 0; idx < validRowPos.length; idx++) {
+            const origIdx = order[validRowPos[idx]].i;
+            const v = rawSeries[col][origIdx];
+            if (v !== null) {
+              lastValid = v;
+              out[idx] = v;
+              validCount++;
+            } else if (lastValid !== null) {
+              out[idx] = lastValid;
+              validCount++;
+            } else {
+              out[idx] = null;
+            }
+          }
+          if (validCount >= 6) {
+            cleanSeries[col] = out;
+          }
+        });
+
+        if (!cleanSeries[BENCHMARK_PRIMARY]) {
+          throw new Error('"NIFTY 50" column has insufficient valid closing prices.');
+        }
+
+        const benchmarks = [BENCHMARK_PRIMARY];
+        if (cleanSeries[BENCHMARK_SECONDARY]) {
+          benchmarks.push(BENCHMARK_SECONDARY);
+        }
+
+        const seriesIds = Object.keys(cleanSeries).filter((c) => !BENCHMARK_SET.has(c));
+        if (seriesIds.length === 0) {
+          throw new Error('No sector or thematic columns found alongside NIFTY 50.');
+        }
+
+        // Auto-register any custom CSV columns into category "theme"
+        seriesIds.forEach((id) => getSeriesMeta(id));
+
+        return {
+          mode: 'live',
+          sourceLabel,
+          dates: sortedDates,
+          benchmarks,
+          seriesIds,
+          series: cleanSeries
+        };
+      }
+
+      /* -----------------------------------------------------------------
+       * 6. APPLICATION STATE
+       * ----------------------------------------------------------------- */
+      const state = {
+        rawDataset: null,
+        models: {},
+        timeframe: 'daily', // 'daily' | 'weekly'
+        benchmark: BENCHMARK_PRIMARY, // 'NIFTY 50' | 'NIFTY 500'
+        tailLength: 6, // 3..10
+        scrubberOffset: 29,
+        isPlaying: false,
+        playTimer: null,
+        selectedSector: 'NIFTY DEFENCE',
+        dimUnfocused: false,
+        labelMode: 'all', // 'all' | 'focus'
+        activeQuadrantFilter: null,
+        activeCategory: 'all', // 'all' | 'core' | 'theme' | 'broad'
+        visibleSectors: new Set(),
+        sortKey: 'rsRatio',
+        sortDir: 'desc',
+        searchQuery: '',
+        tableSearchQuery: '',
+        activeTab: 'upload'
+      };
+
+      function getCurrentModel() {
+        const key = `${state.timeframe}|${state.benchmark}`;
+        if (!state.models[key]) {
+          state.models[key] = computeRRGModel(state.rawDataset, state.timeframe, state.benchmark);
+        }
+        return state.models[key];
+      }
+
+      function getMaxScrubIndex() {
+        const model = getCurrentModel();
+        return Math.min(29, Math.max(0, model.totalBars - 2));
+      }
+
+      function getActiveBarIndex() {
+        const model = getCurrentModel();
+        const maxScrub = getMaxScrubIndex();
+        const clamped = Math.min(state.scrubberOffset, maxScrub);
+        return model.totalBars - 1 - (maxScrub - clamped);
+      }
+
+      function matchesSearchText(id, queryStr) {
+        const q = (queryStr || '').trim().toLowerCase();
+        if (!q) return true;
+        const meta = getSeriesMeta(id);
+        return (
+          id.toLowerCase().includes(q) ||
+          meta.short.toLowerCase().includes(q) ||
+          (meta.ticker && meta.ticker.toLowerCase().includes(q)) ||
+          meta.constituents.some((c) => c.toLowerCase().includes(q))
+        );
+      }
+
+      function matchesCategoryAndGlobalSearch(id) {
+        const meta = getSeriesMeta(id);
+        if (state.activeCategory !== 'all' && meta.category !== state.activeCategory) return false;
+        return matchesSearchText(id, state.searchQuery);
+      }
+
+      function loadDatasetIntoState(dataset) {
+        state.rawDataset = dataset;
+        state.models = {};
+
+        if (!dataset.benchmarks.includes(state.benchmark)) {
+          state.benchmark = BENCHMARK_PRIMARY;
+        }
+
+        const model = getCurrentModel();
+        state.visibleSectors = new Set(model.sectorIds);
+        state.scrubberOffset = getMaxScrubIndex();
+        state.activeQuadrantFilter = null;
+        state.dimUnfocused = false;
+
+        if (!model.sectorIds.includes(state.selectedSector)) {
+          const lastIdx = model.totalBars - 1;
+          const top = [...model.sectorIds]
+            .filter((id) => model.sectors[id][lastIdx])
+            .sort((a, b) => model.sectors[b][lastIdx].score - model.sectors[a][lastIdx].score)[0];
+          state.selectedSector = top || model.sectorIds[0];
+        }
+      }
+
+      /* -----------------------------------------------------------------
+       * 7. STARTUP AUTO-FETCH & GITHUB SYNC CONTROLLER
+       * ----------------------------------------------------------------- */
+      function resolveActiveCsvConfig() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const qCsv = params.get('csv');
+          if (qCsv && qCsv.trim()) return { url: qCsv.trim(), label: 'URL Param CSV' };
+        } catch (_) {}
+
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY_URL);
+          if (saved && saved.trim()) return { url: saved.trim(), label: 'Custom GitHub CSV' };
+        } catch (_) {}
+
+        return { url: DEFAULT_CSV_PATH, label: 'GitHub CSV' };
+      }
+
+      function withCacheBuster(url) {
+        const sep = url.includes('?') ? '&' : '?';
+        return `${url}${sep}t=${Date.now()}`;
+      }
+
+      function setSyncPill(mode, text) {
+        const pill = document.getElementById('sync-status-pill');
+        pill.className = `sync-pill ${mode}`;
+        document.getElementById('sync-status-text').textContent = text;
+      }
+
+      async function autoFetchGitHubCsv({ silentOnFallback = false, explicitUrl = null } = {}) {
+        const icon = document.getElementById('sync-now-icon');
+        icon.classList.add('spinning');
+
+        const cfg = explicitUrl ? { url: explicitUrl, label: 'Custom GitHub CSV' } : resolveActiveCsvConfig();
+        setSyncPill('syncing', 'Syncing ./eod_data.csv...');
+
+        try {
+          const res = await fetch(withCacheBuster(cfg.url), { cache: 'no-store' });
+          if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${cfg.url}`);
+          const text = await res.text();
+          const parsed = parseDataPayload(text, cfg.label);
+          setPlaying(false);
+          loadDatasetIntoState(parsed);
+          renderAll();
+
+          const lastDate = parsed.dates[parsed.dates.length - 1];
+          setSyncPill('live', `Live Synced • ${lastDate} • ${parsed.dates.length} days`);
+          if (!silentOnFallback) {
+            showToast(`Synced ${parsed.seriesIds.length} series across ${parsed.dates.length} days through ${lastDate}.`, 'success');
+          }
+          icon.classList.remove('spinning');
+          return { ok: true, dataset: parsed };
+        } catch (err) {
+          icon.classList.remove('spinning');
+          if (!state.rawDataset) {
+            const demo = generateTwoYearDemoDataset();
+            loadDatasetIntoState(demo);
+            renderAll();
+          }
+          if (state.rawDataset.mode === 'demo') {
+            setSyncPill('demo', 'Demo Data • Simulated 2Y');
+          } else {
+            const lastDate = state.rawDataset.dates[state.rawDataset.dates.length - 1];
+            setSyncPill('live', `Live Synced • ${lastDate} • ${state.rawDataset.dates.length} days`);
+          }
+          if (!silentOnFallback) {
+            showToast(`Could not fetch ${cfg.url}. Using ${state.rawDataset.mode === 'demo' ? 'Demo Data' : 'loaded dataset'}.`, 'error');
+          }
+          return { ok: false, error: err.message };
+        }
+      }
+
+      /* -----------------------------------------------------------------
+       * 8. FORMATTING, CLIPBOARD & DOWNLOAD HELPERS
+       * ----------------------------------------------------------------- */
+      function formatDatePretty(iso) {
+        if (!iso) return '--';
+        const [y, m, d] = iso.split('-').map(Number);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${String(d || 1).padStart(2, '0')} ${months[(m || 1) - 1]} ${y}`;
+      }
+
+      function formatSigned(val, decimals = 2, suffix = '') {
+        if (val === null || val === undefined || !Number.isFinite(val)) return '--';
+        const sign = val > 0 ? '+' : '';
+        return `${sign}${val.toFixed(decimals)}${suffix}`;
+      }
+
+      function formatINR(val) {
+        if (val === null || val === undefined || !Number.isFinite(val)) return '--';
+        return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function showToast(msg, type = 'info') {
+        const stack = document.getElementById('toast-stack');
+        const el = document.createElement('div');
+        el.className = `toast-item toast-${type}`;
+        el.textContent = msg;
+        stack.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('visible'));
+        setTimeout(() => {
+          el.classList.remove('visible');
+          setTimeout(() => el.remove(), 250);
+        }, 3200);
+      }
+
+      function copyTextSafe(text, label) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast(`Copied ${label} to clipboard!`, 'success');
+        } catch (_) {
+          showToast(`Unable to copy ${label} automatically.`, 'error');
+        }
+        ta.remove();
+      }
+
+      function downloadFile(content, filename, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      /* -----------------------------------------------------------------
+       * 9. RENDER: CATEGORY COUNTS & 4 QUADRANT KPI CARDS
+       * ----------------------------------------------------------------- */
+      function renderCategoryCounts() {
+        const model = getCurrentModel();
+        let core = 0;
+        let theme = 0;
+        let broad = 0;
+        model.sectorIds.forEach((id) => {
+          const cat = getSeriesMeta(id).category;
+          if (cat === 'core') core++;
+          else if (cat === 'broad') broad++;
+          else theme++;
+        });
+        document.getElementById('cat-count-all').textContent = model.sectorIds.length;
+        document.getElementById('cat-count-core').textContent = core;
+        document.getElementById('cat-count-theme').textContent = theme;
+        document.getElementById('cat-count-broad').textContent = broad;
+
+        document.querySelectorAll('.cat-pill').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-category') === state.activeCategory);
+        });
+      }
+
+      function renderQuadrantKPIs() {
+        const model = getCurrentModel();
+        const barIdx = getActiveBarIndex();
+        const buckets = { Leading: [], Weakening: [], Lagging: [], Improving: [] };
+
+        let activeTotal = 0;
+        model.sectorIds.forEach((id) => {
+          if (!matchesCategoryAndGlobalSearch(id)) return;
+          const pt = model.sectors[id][barIdx];
+          if (!pt) return;
+          activeTotal++;
+          if (buckets[pt.quadrant]) {
+            buckets[pt.quadrant].push({ id, meta: getSeriesMeta(id), pt });
+          }
+        });
+
+        const denom = Math.max(1, activeTotal);
+        ['Leading', 'Weakening', 'Lagging', 'Improving'].forEach((quad) => {
+          const items = buckets[quad].sort((a, b) => b.pt.rsRatio - a.pt.rsRatio);
+          document.getElementById(`kpi-count-${quad}`).textContent = items.length;
+          document.getElementById(`kpi-pct-${quad}`).textContent = `${Math.round((items.length / denom) * 100)}% of active`;
+
+          const tagsEl = document.getElementById(`kpi-tags-${quad}`);
+          if (items.length === 0) {
+            tagsEl.innerHTML = `<span style="font-size:10.5px;color:var(--text-muted);font-style:italic;">None in filter</span>`;
+          } else {
+            tagsEl.innerHTML =
+              items
+                .slice(0, 5)
+                .map(
+                  (it) =>
+                    `<span class="mini-tag mono"><span style="width:6px;height:6px;border-radius:50%;background:${it.meta.color};display:inline-block;"></span>${it.meta.short}</span>`
+                )
+                .join('') +
+              (items.length > 5
+                ? `<span class="mono" style="font-size:10px;color:var(--text-muted);align-self:center;">+${items.length - 5}</span>`
+                : '');
+          }
+
+          const card = document.querySelector(`.kpi-card[data-quadrant="${quad}"]`);
+          card.classList.remove('active-Leading', 'active-Weakening', 'active-Lagging', 'active-Improving');
+          if (state.activeQuadrantFilter === quad) {
+            card.classList.add(`active-${quad}`);
+          }
+        });
+
+        const chartFilterPill = document.getElementById('active-filter-pill');
+        const tableFilterBadge = document.getElementById('table-filter-badge');
+        if (state.activeQuadrantFilter) {
+          chartFilterPill.classList.remove('hidden');
+          document.getElementById('active-filter-name').textContent = state.activeQuadrantFilter;
+          tableFilterBadge.classList.remove('hidden');
+          tableFilterBadge.className = `pill pill-${state.activeQuadrantFilter}`;
+          tableFilterBadge.textContent = `Quadrant: ${state.activeQuadrantFilter}`;
+        } else {
+          chartFilterPill.classList.add('hidden');
+          tableFilterBadge.classList.add('hidden');
+        }
+      }
+
+      /* -----------------------------------------------------------------
+       * 10. RENDER: HIGH-DPI SVG RELATIVE ROTATION GRAPH + HOVER DIMMING
+       * ----------------------------------------------------------------- */
+      function buildSmoothPath(coords) {
+        if (!coords.length) return '';
+        if (coords.length === 1) return `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+        if (coords.length === 2) {
+          return `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)} L ${coords[1].x.toFixed(1)} ${coords[1].y.toFixed(1)}`;
+        }
+        let d = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+        for (let i = 0; i < coords.length - 1; i++) {
+          const p0 = coords[Math.max(0, i - 1)];
+          const p1 = coords[i];
+          const p2 = coords[i + 1];
+          const p3 = coords[Math.min(coords.length - 1, i + 2)];
+          const cp1x = p1.x + (p2.x - p0.x) / 6;
+          const cp1y = p1.y + (p2.y - p0.y) / 6;
+          const cp2x = p2.x - (p3.x - p1.x) / 6;
+          const cp2y = p2.y - (p3.y - p1.y) / 6;
+          d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+        }
+        return d;
+      }
+
+      function avoidLabelCollisions(labels, bounds) {
+        const padX = 5;
+        const padY = 4;
+        for (let iter = 0; iter < 30; iter++) {
+          for (let i = 0; i < labels.length; i++) {
+            for (let j = i + 1; j < labels.length; j++) {
+              const a = labels[i];
+              const b = labels[j];
+              const ovX = (a.w + b.w) / 2 + padX - Math.abs(a.x - b.x);
+              const ovY = (a.h + b.h) / 2 + padY - Math.abs(a.y - b.y);
+              if (ovX > 0 && ovY > 0) {
+                if (ovY < ovX) {
+                  const dy = ovY / 2 + 1;
+                  if (a.y <= b.y) { a.y -= dy; b.y += dy; } else { a.y += dy; b.y -= dy; }
+                } else {
+                  const dx = ovX / 2 + 1;
+                  if (a.x <= b.x) { a.x -= dx; b.x += dx; } else { a.x += dx; b.x -= dx; }
+                }
+              }
+            }
+          }
+          labels.forEach((l) => {
+            l.x = Math.max(bounds.left + l.w / 2 + 4, Math.min(bounds.right - l.w / 2 - 4, l.x));
+            l.y = Math.max(bounds.top + l.h / 2 + 4, Math.min(bounds.bottom - l.h / 2 - 4, l.y));
+          });
+        }
+        return labels;
+      }
+
+      function setChartHover(sectorId) {
+        const svg = document.getElementById('rrg-svg');
+        svg.querySelectorAll('.is-hovered').forEach((el) => el.classList.remove('is-hovered'));
+        if (!sectorId) {
+          svg.classList.remove('has-hover');
+          return;
+        }
+        svg.classList.add('has-hover');
+        svg.querySelectorAll(`[data-sector="${CSS.escape(sectorId)}"]`).forEach((el) => el.classList.add('is-hovered'));
+      }
+
+      function renderRRGChart() {
+        const stage = document.getElementById('rrg-stage');
+        const svg = document.getElementById('rrg-svg');
+        svg.classList.remove('has-hover');
+
+        const rect = stage.getBoundingClientRect();
+        const width = Math.max(320, Math.floor(rect.width));
+        const height = Math.max(360, Math.floor(rect.height));
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+        const pad = { top: 24, right: 24, bottom: 42, left: 52 };
+        const plotW = width - pad.left - pad.right;
+        const plotH = height - pad.top - pad.bottom;
+
+        const model = getCurrentModel();
+        const barIdx = getActiveBarIndex();
+        const startIdx = Math.max(0, barIdx - (state.tailLength - 1));
+
+        const trails = [];
+        let maxDevX = 1.8;
+        let maxDevY = 1.8;
+
+        model.sectorIds.forEach((id) => {
+          if (!state.visibleSectors.has(id)) return;
+          if (!matchesCategoryAndGlobalSearch(id)) return;
+
+          const headPt = model.sectors[id][barIdx];
+          if (!headPt) return; // Series not yet listed on this scrubbed date
+
+          const pts = model.sectors[id].slice(startIdx, barIdx + 1).filter(Boolean);
+          if (!pts.length) return;
+
+          pts.forEach((p) => {
+            maxDevX = Math.max(maxDevX, Math.abs(p.rsRatio - 100));
+            maxDevY = Math.max(maxDevY, Math.abs(p.rsMomentum - 100));
+          });
+
+          const matchesQuad = !state.activeQuadrantFilter || headPt.quadrant === state.activeQuadrantFilter;
+          const isSelected = id === state.selectedSector;
+          const dimmed = !matchesQuad || (state.dimUnfocused && !isSelected);
+
+          trails.push({ id, meta: getSeriesMeta(id), pts, head: headPt, isSelected, dimmed });
+        });
+
+        const spanX = Math.ceil(maxDevX * 1.24 * 2) / 2;
+        const spanY = Math.ceil(maxDevY * 1.24 * 2) / 2;
+        const xMin = 100 - spanX;
+        const xMax = 100 + spanX;
+        const yMin = 100 - spanY;
+        const yMax = 100 + spanY;
+
+        const sx = (v) => pad.left + ((v - xMin) / (xMax - xMin)) * plotW;
+        const sy = (v) => pad.top + ((yMax - v) / (yMax - yMin)) * plotH;
+        const cx = sx(100);
+        const cy = sy(100);
+
+        const parts = [];
+        parts.push(`
+          <defs>
+            <filter id="rrg-glow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="2.8" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <clipPath id="rrg-clip">
+              <rect x="${pad.left}" y="${pad.top}" width="${plotW}" height="${plotH}" rx="8"/>
+            </clipPath>
+          </defs>
+        `);
+
+        parts.push(`<g clip-path="url(#rrg-clip)">`);
+
+        // 4 Subtle Quadrant Background Tints
+        parts.push(`<rect x="${pad.left}" y="${pad.top}" width="${cx - pad.left}" height="${cy - pad.top}" fill="rgba(99, 102, 241, 0.085)"/>`);
+        parts.push(`<rect x="${cx}" y="${pad.top}" width="${pad.left + plotW - cx}" height="${cy - pad.top}" fill="rgba(16, 185, 129, 0.085)"/>`);
+        parts.push(`<rect x="${pad.left}" y="${cy}" width="${cx - pad.left}" height="${pad.top + plotH - cy}" fill="rgba(244, 63, 94, 0.075)"/>`);
+        parts.push(`<rect x="${cx}" y="${cy}" width="${pad.left + plotW - cx}" height="${pad.top + plotH - cy}" fill="rgba(245, 158, 11, 0.075)"/>`);
+
+        // Quadrant Corner Watermarks
+        parts.push(`
+          <text x="${pad.left + 12}" y="${pad.top + 20}" fill="#a5b4fc" opacity="0.78" font-size="11" font-weight="700" letter-spacing="0.09em">IMPROVING</text>
+          <text x="${pad.left + plotW - 12}" y="${pad.top + 20}" text-anchor="end" fill="#34d399" opacity="0.80" font-size="11" font-weight="700" letter-spacing="0.09em">LEADING</text>
+          <text x="${pad.left + 12}" y="${pad.top + plotH - 12}" fill="#fb7185" opacity="0.78" font-size="11" font-weight="700" letter-spacing="0.09em">LAGGING</text>
+          <text x="${pad.left + plotW - 12}" y="${pad.top + plotH - 12}" text-anchor="end" fill="#fbbf24" opacity="0.78" font-size="11" font-weight="700" letter-spacing="0.09em">WEAKENING</text>
+        `);
+
+        // Gridlines
+        for (let i = -2; i <= 2; i++) {
+          if (i === 0) continue;
+          const gx = sx(100 + (spanX / 2) * i);
+          const gy = sy(100 + (spanY / 2) * i);
+          parts.push(`<line x1="${gx.toFixed(1)}" y1="${pad.top}" x2="${gx.toFixed(1)}" y2="${pad.top + plotH}" stroke="rgba(148,163,184,0.10)" stroke-width="1"/>`);
+          parts.push(`<line x1="${pad.left}" y1="${gy.toFixed(1)}" x2="${pad.left + plotW}" y2="${gy.toFixed(1)}" stroke="rgba(148,163,184,0.10)" stroke-width="1"/>`);
+        }
+
+        // Crosshair Center Axes at (100, 100)
+        parts.push(`
+          <line x1="${cx.toFixed(1)}" y1="${pad.top}" x2="${cx.toFixed(1)}" y2="${pad.top + plotH}" stroke="rgba(148,163,184,0.52)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <line x1="${pad.left}" y1="${cy.toFixed(1)}" x2="${pad.left + plotW}" y2="${cy.toFixed(1)}" stroke="rgba(148,163,184,0.52)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.4" fill="#0b0f17" stroke="rgba(148,163,184,0.68)" stroke-width="1.5"/>
+        `);
+
+        // Layer ordering: dimmed at back, selected on top
+        trails.sort((a, b) => {
+          if (a.isSelected) return 1;
+          if (b.isSelected) return -1;
+          if (a.dimmed !== b.dimmed) return a.dimmed ? -1 : 1;
+          return 0;
+        });
+
+        const labelNodes = [];
+
+        trails.forEach((tr) => {
+          const coords = tr.pts.map((p) => ({ x: sx(p.rsRatio), y: sy(p.rsMomentum) }));
+          const pathD = buildSmoothPath(coords);
+          const baseOp = tr.dimmed ? 0.16 : tr.isSelected ? 1 : 0.88;
+          const strokeW = tr.isSelected ? 3.2 : 2.0;
+
+          parts.push(`<g class="rrg-node rrg-trail-group" data-sector="${tr.id}" style="cursor:pointer" opacity="${baseOp}">`);
+          // Invisible wide hit stroke makes hovering thin trails effortless
+          parts.push(`<path d="${pathD}" fill="none" stroke="transparent" stroke-width="12" stroke-linecap="round"/>`);
+          parts.push(`<path d="${pathD}" fill="none" stroke="${tr.meta.color}" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round" opacity="${tr.isSelected ? 0.98 : 0.74}"/>`);
+
+          for (let i = 0; i < coords.length - 1; i++) {
+            const frac = (i + 1) / coords.length;
+            const r = 1.8 + frac * (tr.isSelected ? 2.1 : 1.4);
+            const op = 0.25 + frac * 0.56;
+            parts.push(`<circle cx="${coords[i].x.toFixed(1)}" cy="${coords[i].y.toFixed(1)}" r="${r.toFixed(1)}" fill="${tr.meta.color}" opacity="${op.toFixed(2)}"/>`);
+          }
+
+          // Directional arrowhead
+          const head = coords[coords.length - 1];
+          if (coords.length >= 2) {
+            const prev = coords[coords.length - 2];
+            const ang = Math.atan2(head.y - prev.y, head.x - prev.x);
+            const len = tr.isSelected ? 10.5 : 8.5;
+            const off = tr.isSelected ? 7.8 : 6.2;
+            const tipX = head.x - Math.cos(ang) * off;
+            const tipY = head.y - Math.sin(ang) * off;
+            const w1X = tipX - Math.cos(ang - 0.52) * len;
+            const w1Y = tipY - Math.sin(ang - 0.52) * len;
+            const w2X = tipX - Math.cos(ang + 0.52) * len;
+            const w2Y = tipY - Math.sin(ang + 0.52) * len;
+            parts.push(`<polygon points="${tipX.toFixed(1)},${tipY.toFixed(1)} ${w1X.toFixed(1)},${w1Y.toFixed(1)} ${w2X.toFixed(1)},${w2Y.toFixed(1)}" fill="${tr.meta.color}"/>`);
+          }
+
+          if (tr.isSelected && !tr.dimmed) {
+            parts.push(`<circle cx="${head.x.toFixed(1)}" cy="${head.y.toFixed(1)}" r="11" fill="${tr.meta.color}" class="rrg-head-pulse"/>`);
+          }
+          parts.push(`
+            <circle cx="${head.x.toFixed(1)}" cy="${head.y.toFixed(1)}" r="${tr.isSelected ? 6.6 : 5.0}" fill="${tr.meta.color}" stroke="#0b0f17" stroke-width="2" ${!tr.dimmed ? 'filter="url(#rrg-glow)"' : ''}/>
+            <circle cx="${head.x.toFixed(1)}" cy="${head.y.toFixed(1)}" r="15" fill="transparent"/>
+          `);
+          parts.push(`</g>`);
+
+          const showThisLabel = state.labelMode === 'all' ? (!tr.dimmed || tr.isSelected) : tr.isSelected;
+          if (showThisLabel) {
+            const lblText = tr.meta.short;
+            const w = lblText.length * 6.5 + 13;
+            const h = 18;
+            const dirX = head.x >= cx ? 1 : -1;
+            const dirY = head.y <= cy ? -1 : 1;
+            labelNodes.push({
+              id: tr.id,
+              text: lblText,
+              color: tr.meta.color,
+              isSelected: tr.isSelected,
+              anchorX: head.x,
+              anchorY: head.y,
+              x: head.x + dirX * (w / 2 + 9),
+              y: head.y + dirY * 13,
+              w,
+              h
+            });
+          }
+        });
+
+        const placed = avoidLabelCollisions(labelNodes, {
+          left: pad.left + 2,
+          right: pad.left + plotW - 2,
+          top: pad.top + 24,
+          bottom: pad.top + plotH - 22
+        });
+
+        placed.forEach((l) => {
+          if (Math.hypot(l.x - l.anchorX, l.y - l.anchorY) > 22) {
+            parts.push(`<line class="rrg-connector" data-sector="${l.id}" x1="${l.anchorX.toFixed(1)}" y1="${l.anchorY.toFixed(1)}" x2="${l.x.toFixed(1)}" y2="${l.y.toFixed(1)}" stroke="${l.color}" stroke-width="0.9" opacity="0.46" stroke-dasharray="2 2"/>`);
+          }
+          const bg = l.isSelected ? l.color : 'rgba(17, 24, 39, 0.93)';
+          const fg = l.isSelected ? '#0b0f17' : '#f3f4f6';
+          parts.push(`
+            <g class="rrg-node rrg-label-group" data-sector="${l.id}" style="cursor:pointer">
+              <rect x="${(l.x - l.w / 2).toFixed(1)}" y="${(l.y - l.h / 2).toFixed(1)}" width="${l.w.toFixed(1)}" height="${l.h}" rx="5" fill="${bg}" stroke="${l.color}" stroke-width="${l.isSelected ? 1.5 : 1}"/>
+              <text x="${l.x.toFixed(1)}" y="${(l.y + 3.4).toFixed(1)}" text-anchor="middle" fill="${fg}" font-family="ui-monospace, monospace" font-size="9.8" font-weight="700">${l.text}</text>
+            </g>
+          `);
+        });
+
+        parts.push(`</g>`);
+
+        // Outer Frame
+        parts.push(`<rect x="${pad.left}" y="${pad.top}" width="${plotW}" height="${plotH}" rx="8" fill="none" stroke="rgba(148,163,184,0.22)" stroke-width="1.2"/>`);
+
+        // Axis Ticks
+        for (let i = -2; i <= 2; i++) {
+          const xv = 100 + (spanX / 2) * i;
+          const yv = 100 + (spanY / 2) * i;
+          const gx = sx(xv);
+          const gy = sy(yv);
+          parts.push(`
+            <text x="${gx.toFixed(1)}" y="${pad.top + plotH + 16}" text-anchor="middle" fill="${i === 0 ? '#e5e7eb' : '#9ca3af'}" font-family="ui-monospace, monospace" font-size="10" font-weight="${i === 0 ? '700' : '500'}">${xv.toFixed(1)}</text>
+            <text x="${pad.left - 8}" y="${(gy + 3.5).toFixed(1)}" text-anchor="end" fill="${i === 0 ? '#e5e7eb' : '#9ca3af'}" font-family="ui-monospace, monospace" font-size="10" font-weight="${i === 0 ? '700' : '500'}">${yv.toFixed(1)}</text>
+          `);
+        }
+
+        // Axis Titles
+        parts.push(`
+          <text x="${pad.left + plotW / 2}" y="${height - 8}" text-anchor="middle" fill="#9ca3af" font-size="11" font-weight="600">RS-Ratio (Relative Strength vs ${model.benchmark})</text>
+          <text transform="translate(15, ${pad.top + plotH / 2}) rotate(-90)" text-anchor="middle" fill="#9ca3af" font-size="11" font-weight="600">RS-Momentum</text>
+        `);
+
+        svg.innerHTML = parts.join('');
+
+        // Hover Focus Dimming + Floating Tooltip + Click to Inspect
+        svg.querySelectorAll('.rrg-node').forEach((node) => {
+          const id = node.getAttribute('data-sector');
+          node.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.selectedSector = id;
+            renderAll();
+          });
+          node.addEventListener('mouseenter', (e) => {
+            setChartHover(id);
+            showTooltip(e, id);
+          });
+          node.addEventListener('mousemove', (e) => moveTooltip(e));
+          node.addEventListener('mouseleave', () => {
+            setChartHover(null);
+            hideTooltip();
+          });
+        });
+
+        const tfText = state.timeframe === 'daily' ? 'Daily EOD' : 'Weekly Fri';
+        document.getElementById('chart-tf-pill').textContent = `${tfText} · ${state.tailLength}-Period Tail`;
+        document.getElementById('chart-bench-label').textContent = model.benchmark;
+      }
+
+      /* -----------------------------------------------------------------
+       * 11. FLOATING TOOLTIP (ETF PROXY, RS-RATIO, RS-MOM, 10-EMA, RETURNS)
+       * ----------------------------------------------------------------- */
+      function showTooltip(event, sectorId) {
+        const el = document.getElementById('rrg-tooltip');
+        const model = getCurrentModel();
+        const barIdx = getActiveBarIndex();
+        const pt = model.sectors[sectorId][barIdx];
+        const meta = getSeriesMeta(sectorId);
+        if (!pt) return;
+
+        const retCls = (v) => (v === null ? 'text-muted' : v >= 0 ? 'text-pos' : 'text-neg');
+        const catInfo = CATEGORY_META[meta.category] || CATEGORY_META.theme;
+        const proxyHtml = meta.isEtfProxy
+          ? `<span class="pill pill-proxy mono" style="font-size:9.5px;">${meta.proxyKind || 'ETF'}: ${meta.ticker}</span>`
+          : `<span class="pill ${catInfo.pillClass}" style="font-size:9.5px;">${catInfo.label} · ${meta.ticker}</span>`;
+
+        el.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:7px;margin-bottom:7px;border-bottom:1px solid #1f2937;">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0;">
+              <span style="width:9px;height:9px;border-radius:50%;background:${meta.color};flex-shrink:0;"></span>
+              <div style="overflow:hidden;">
+                <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sectorId}</div>
+                <div class="mono" style="font-size:10px;color:#9ca3af;">Close: ₹${formatINR(pt.close)}</div>
+              </div>
+            </div>
+            <span class="pill pill-${pt.quadrant}">${pt.quadrant}</span>
+          </div>
+          <div style="margin-bottom:7px;display:flex;flex-wrap:wrap;gap:5px;">
+            ${proxyHtml}
+            ${pt.isPartial ? `<span class="pill pill-Weakening mono" style="font-size:9.5px;">${pt.historyDays}d partial</span>` : ''}
+          </div>
+          <div class="mono" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:11px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">RS-Ratio</span><strong style="color:#fff;">${pt.rsRatio.toFixed(2)}</strong></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">RS-Mom</span><strong style="color:#fff;">${pt.rsMomentum.toFixed(2)}</strong></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">1D Ret</span><strong class="${retCls(pt.ret1D)}">${formatSigned(pt.ret1D, 2, '%')}</strong></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">1W Ret</span><strong class="${retCls(pt.ret1W)}">${formatSigned(pt.ret1W, 2, '%')}</strong></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">1M Ret</span><strong class="${retCls(pt.ret1M)}">${formatSigned(pt.ret1M, 2, '%')}</strong></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#9ca3af;">3M Ret</span><strong class="${retCls(pt.ret3M)}">${formatSigned(pt.ret3M, 2, '%')}</strong></div>
+            <div style="grid-column:1 / -1;display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid #1f2937;">
+              <span style="color:#9ca3af;">vs 10-EMA</span>
+              <strong class="${pt.emaAbove ? 'text-pos' : 'text-neg'}">${pt.emaAbove ? 'Above' : 'Below'} (${formatSigned(pt.emaDist, 2, '%')})</strong>
+            </div>
+          </div>
+        `;
+        el.classList.remove('hidden');
+        moveTooltip(event);
+      }
+
+      function moveTooltip(event) {
+        const el = document.getElementById('rrg-tooltip');
+        const tw = el.offsetWidth || 288;
+        const th = el.offsetHeight || 195;
+        let x = event.clientX + 16;
+        let y = event.clientY + 16;
+        if (x + tw > window.innerWidth - 10) x = event.clientX - tw - 16;
+        if (y + th > window.innerHeight - 10) y = event.clientY - th - 16;
+        el.style.left = `${Math.max(8, x)}px`;
+        el.style.top = `${Math.max(8, y)}px`;
+      }
+
+      function hideTooltip() {
+        document.getElementById('rrg-tooltip').classList.add('hidden');
+      }
+
+      /* -----------------------------------------------------------------
+       * 12. RENDER: SERIES VISIBILITY CHIPS
+       * ----------------------------------------------------------------- */
+      function renderSectorChips() {
+        const wrap = document.getElementById('sector-chips');
+        const model = getCurrentModel();
+        const barIdx = getActiveBarIndex();
+        const matchingIds = model.sectorIds.filter(matchesCategoryAndGlobalSearch);
+
+        let visCount = 0;
+        matchingIds.forEach((id) => {
+          if (state.visibleSectors.has(id) && model.sectors[id][barIdx]) visCount++;
+        });
+        document.getElementById('visible-count').textContent = visCount;
+        document.getElementById('total-count').textContent = matchingIds.length;
+
+        wrap.innerHTML = matchingIds
+          .map((id) => {
+            const meta = getSeriesMeta(id);
+            const pt = model.sectors[id][barIdx];
+            const isVis = state.visibleSectors.has(id);
+            const isSel = state.selectedSector === id;
+            const rsLabel = pt ? pt.rsRatio.toFixed(1) : 'N/A';
+            return `
+              <button class="sector-chip ${isVis ? (isSel ? 'selected' : '') : 'hidden-sector'}" data-chip="${id}" title="Toggle ${id} (${meta.ticker})">
+                <span style="width:7px;height:7px;border-radius:50%;background:${meta.color};display:inline-block;"></span>
+                <span>${meta.short}</span>
+                <span class="mono" style="font-size:10px;opacity:0.75;">${rsLabel}</span>
+              </button>
+            `;
+          })
+          .join('');
+
+        wrap.querySelectorAll('.sector-chip').forEach((btn) => {
+          const id = btn.getAttribute('data-chip');
+          btn.addEventListener('click', () => {
+            if (state.visibleSectors.has(id)) {
+              state.visibleSectors.delete(id);
+            } else {
+              state.visibleSectors.add(id);
+              state.selectedSector = id;
+            }
+            renderAll();
+          });
+          btn.addEventListener('mouseenter', () => {
+            if (state.visibleSectors.has(id)) setChartHover(id);
+          });
+          btn.addEventListener('mouseleave', () => setChartHover(null));
+        });
+      }
+
+      /* -----------------------------------------------------------------
+       * 13. RENDER: SECTOR / THEME INSPECTOR & 12-PERIOD SPARKLINE
+       * ----------------------------------------------------------------- */
+      function renderInspector() {
+        const model = getCurrentModel();
+        const barIdx = getActiveBarIndex();
+        let id = state.selectedSector;
+        if (!model.sectors[id]) {
+          id = model.sectorIds[0];
+          state.selectedSector = id;
+        }
+
+        const pts = model.sectors[id];
+        const meta = getSeriesMeta(id);
+        const hMeta = model.historyMeta[id];
+        const curr = pts[barIdx];
+        const catInfo = CATEGORY_META[meta.category] || CATEGORY_META.theme;
+
+        document.getElementById('insp-dot').style.background = meta.color;
+        document.getElementById('insp-name').textContent = id;
+
+        // Category & ETF Proxy badges
+        const catBadge = document.getElementById('insp-cat-badge');
+        catBadge.textContent = catInfo.label;
+        catBadge.className = `pill ${catInfo.pillClass}`;
+
+        const proxyBadge = document.getElementById('insp-proxy-badge');
+        if (meta.isEtfProxy) {
+          proxyBadge.textContent = `${meta.proxyKind ? 'Metal ETF' : 'ETF Proxy'}: ${meta.ticker}`;
+          proxyBadge.classList.remove('hidden');
+        } else {
+          proxyBadge.classList.add('hidden');
+        }
+
+        // Valid History Days & Partial History Flag
+        const histBox = document.getElementById('insp-history-notice');
+        const histLabel = document.getElementById('insp-history-label');
+        const histBadge = document.getElementById('insp-history-badge');
+        if (hMeta) {
+          histLabel.textContent = `${hMeta.dailyDays} valid trading days (from ${formatDatePretty(hMeta.firstDate)})`;
+          if (hMeta.isPartial) {
+            histBox.classList.add('partial');
+            histBadge.textContent = 'Partial History';
+          } else {
+            histBox.classList.remove('partial');
+            histBadge.textContent = 'Full History';
+          }
+        }
+
+        // Click-to-copy Top Constituents
+        const constWrap = document.getElementById('insp-constituents');
+        constWrap.innerHTML = meta.constituents
+          .map((sym) => `<button type="button" class="constituent-pill mono" data-sym="${sym}" title="Copy ${sym}">${sym}</button>`)
+          .join('');
+        constWrap.querySelectorAll('.constituent-pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const sym = btn.getAttribute('data-sym');
+            copyTextSafe(sym, sym);
+          });
+        });
+
+        // Graceful state if scrubbed earlier than listing date
+        if (!curr) {
+          document.getElementById('insp-rank').textContent = 'Pre-Listing';
+          document.getElementById('insp-close').textContent = '--';
+          document.getElementById('insp-date').textContent = formatDatePretty(model.dates[barIdx]);
+          document.getElementById('insp-signal').textContent = `${id} (${meta.ticker}) had not started trading on ${formatDatePretty(model.dates[barIdx])}. Scrub forward past ${formatDatePretty(hMeta ? hMeta.firstDate : '')} to inspect its rotation.`;
+          document.getElementById('insp-rs-ratio').textContent = '--';
+          document.getElementById('insp-rs-ratio-delta').textContent = '--';
+          document.getElementById('insp-rs-mom').textContent = '--';
+          document.getElementById('insp-rs-mom-delta').textContent = '--';
+          document.getElementById('insp-ema-val').textContent = 'EMA: --';
+          document.getElementById('insp-ema-dist').textContent = '--';
+          ['insp-ret-1d', 'insp-ret-1w', 'insp-ret-1m', 'insp-ret-3m'].forEach((k) => {
+            const el = document.getElementById(k);
+            el.textContent = '--';
+            el.className = 'ret-pill-val mono text-muted';
+          });
+          document.getElementById('insp-sparkline-svg').innerHTML = '';
+          return;
+        }
+
+        let prev = curr;
+        for (let k = barIdx - 1; k >= 0; k--) {
+          if (pts[k]) {
+            prev = pts[k];
+            break;
+          }
+        }
+
+        document.getElementById('insp-rank').textContent = `Rank #${curr.rank} of ${curr.rankTotal || model.sectorIds.length}`;
+        document.getElementById('insp-close').textContent = `₹${formatINR(curr.close)}`;
+        document.getElementById('insp-date').textContent = formatDatePretty(curr.date);
+        document.getElementById('insp-prev-label').textContent = state.timeframe === 'daily' ? 'Prev Session' : 'Prev Week';
+
+        const prevQ = document.getElementById('insp-prev-quad');
+        const currQ = document.getElementById('insp-curr-quad');
+        prevQ.textContent = prev.quadrant;
+        prevQ.className = `pill pill-${prev.quadrant}`;
+        currQ.textContent = curr.quadrant;
+        currQ.className = `pill pill-${curr.quadrant}`;
+        document.getElementById('insp-signal').textContent = QUADRANT_INFO[curr.quadrant].signal;
+
+        const rDelta = curr.rsRatio - prev.rsRatio;
+        const mDelta = curr.rsMomentum - prev.rsMomentum;
+
+        document.getElementById('insp-rs-ratio').textContent = curr.rsRatio.toFixed(2);
+        const rDelEl = document.getElementById('insp-rs-ratio-delta');
+        rDelEl.textContent = formatSigned(rDelta, 2);
+        rDelEl.className = rDelta >= 0 ? 'text-pos' : 'text-neg';
+
+        document.getElementById('insp-rs-mom').textContent = curr.rsMomentum.toFixed(2);
+        const mDelEl = document.getElementById('insp-rs-mom-delta');
+        mDelEl.textContent = formatSigned(mDelta, 2);
+        mDelEl.className = mDelta >= 0 ? 'text-pos' : 'text-neg';
+
+        const emaPill = document.getElementById('insp-ema-pill');
+        emaPill.textContent = curr.emaAbove ? 'Above 10 EMA' : 'Below 10 EMA';
+        emaPill.className = `pill ${curr.emaAbove ? 'pill-Leading' : 'pill-Lagging'}`;
+        document.getElementById('insp-ema-val').textContent = `EMA: ₹${formatINR(curr.ema10)}`;
+        const emaDistEl = document.getElementById('insp-ema-dist');
+        emaDistEl.textContent = formatSigned(curr.emaDist, 2, '%');
+        emaDistEl.className = `mono ${curr.emaAbove ? 'text-pos' : 'text-neg'}`;
+
+        const setRet = (elId, val) => {
+          const el = document.getElementById(elId);
+          el.textContent = formatSigned(val, 2, '%');
+          el.className = `ret-pill-val mono ${val === null ? 'text-muted' : val >= 0 ? 'text-pos' : 'text-neg'}`;
+        };
+        setRet('insp-ret-1d', curr.ret1D);
+        setRet('insp-ret-1w', curr.ret1W);
+        setRet('insp-ret-1m', curr.ret1M);
+        setRet('insp-ret-3m', curr.ret3M);
+
+        // 12-Period Dual RS Sparkline
+        const hist = [];
+        for (let k = Math.max(0, barIdx - 11); k <= barIdx; k++) {
+          if (pts[k]) hist.push(pts[k]);
+        }
+        renderDualSparkline(hist);
+      }
+
+      function renderDualSparkline(history) {
+        const svg = document.getElementById('insp-sparkline-svg');
+        const rect = svg.getBoundingClientRect();
+        const width = Math.max(240, Math.floor(rect.width) || 320);
+        const height = Math.max(120, Math.floor(rect.height) || 130);
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+        if (history.length < 2) {
+          svg.innerHTML = '';
+          return;
+        }
+
+        const pad = { top: 10, right: 10, bottom: 20, left: 34 };
+        const plotW = width - pad.left - pad.right;
+        const plotH = height - pad.top - pad.bottom;
+
+        let minV = 99.4;
+        let maxV = 100.6;
+        history.forEach((p) => {
+          minV = Math.min(minV, p.rsRatio, p.rsMomentum);
+          maxV = Math.max(maxV, p.rsRatio, p.rsMomentum);
+        });
+        const margin = (maxV - minV) * 0.16;
+        minV -= margin;
+        maxV += margin;
+
+        const sx = (i) => pad.left + (i / (history.length - 1)) * plotW;
+        const sy = (v) => pad.top + ((maxV - v) / (maxV - minV)) * plotH;
+        const y100 = sy(100);
+
+        const rCoords = history.map((p, i) => ({ x: sx(i), y: sy(p.rsRatio) }));
+        const mCoords = history.map((p, i) => ({ x: sx(i), y: sy(p.rsMomentum) }));
+
+        const parts = [];
+        parts.push(`
+          <line x1="${pad.left}" y1="${y100.toFixed(1)}" x2="${width - pad.right}" y2="${y100.toFixed(1)}" stroke="rgba(148,163,184,0.45)" stroke-dasharray="3 3" stroke-width="1"/>
+          <text x="${pad.left - 5}" y="${(y100 + 3).toFixed(1)}" text-anchor="end" fill="#6b7280" font-family="ui-monospace, monospace" font-size="9">100</text>
+          <text x="${pad.left - 5}" y="${(pad.top + 4).toFixed(1)}" text-anchor="end" fill="#6b7280" font-family="ui-monospace, monospace" font-size="9">${maxV.toFixed(1)}</text>
+          <text x="${pad.left - 5}" y="${(pad.top + plotH).toFixed(1)}" text-anchor="end" fill="#6b7280" font-family="ui-monospace, monospace" font-size="9">${minV.toFixed(1)}</text>
+          <text x="${pad.left}" y="${height - 4}" fill="#6b7280" font-family="ui-monospace, monospace" font-size="9">${formatDatePretty(history[0].date).slice(0, 6)}</text>
+          <text x="${width - pad.right}" y="${height - 4}" text-anchor="end" fill="#6b7280" font-family="ui-monospace, monospace" font-size="9">${formatDatePretty(history[history.length - 1].date).slice(0, 6)}</text>
+          <path d="${buildSmoothPath(rCoords)}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+          <path d="${buildSmoothPath(mCoords)}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="${rCoords[rCoords.length - 1].x.toFixed(1)}" cy="${rCoords[rCoords.length - 1].y.toFixed(1)}" r="3.2" fill="#38bdf8"/>
+          <circle cx="${mCoords[mCoords.length - 1].x.toFixed(1)}" cy="${mCoords[mCoords.length - 1].y.toFixed(1)}" r="3.2" fill="#fbbf24"/>
+          <line id="spark-cross" x1="0" y1="${pad.top}" x2="0" y2="${pad.top + plotH}" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2 2" opacity="0"/>
+        `);
+
+        const colW = plotW / history.length;
+        history.forEach((_, idx) => {
+          const x = sx(idx);
+          parts.push(`<rect class="spark-hit" data-idx="${idx}" x="${(x - colW / 2).toFixed(1)}" y="${pad.top}" width="${colW.toFixed(1)}" height="${plotH}" fill="transparent" style="cursor:crosshair"/>`);
+        });
+
+        svg.innerHTML = parts.join('');
+        const readout = document.getElementById('insp-spark-readout');
+        const cross = svg.querySelector('#spark-cross');
+
+        svg.querySelectorAll('.spark-hit').forEach((hit) => {
+          hit.addEventListener('mouseenter', () => {
+            const idx = Number(hit.getAttribute('data-idx'));
+            const pt = history[idx];
+            const cx = sx(idx);
+            cross.setAttribute('x1', cx.toFixed(1));
+            cross.setAttribute('x2', cx.toFixed(1));
+            cross.setAttribute('opacity', '0.85');
+            readout.innerHTML = `
+              <span style="color:#e5e7eb;font-weight:600;">${formatDatePretty(pt.date)}</span>
+              <span><span style="color:#38bdf8;">R: ${pt.rsRatio.toFixed(2)}</span> · <span style="color:#fbbf24;">M: ${pt.rsMomentum.toFixed(2)}</span></span>
+            `;
+          });
+        });
+
+        svg.addEventListener('mouseleave', () => {
+          if (cross) cross.setAttribute('opacity', '0');
+          readout.innerHTML = `<span>Hover sparkline to inspect bar</span><span>Center: 100.00</span>`;
+        });
+      }
+
+      /* -----------------------------------------------------------------
+       * 14. RENDER: SORTABLE RETURN HEATMAP & ROTATION LEADERBOARD
+       * ----------------------------------------------------------------- */
+      function heatmapBg(val, maxScale) {
+        if (val === null || val === undefined || !Number.isFinite(val)) return '';
+        const intensity = Math.min(1, Math.abs(val) / maxScale);
+        const alpha = (0.06 + intensity * 0.26).toFixed(2);
+        if (val > 0.005) return `background:rgba(16,185,129,${alpha});`;
+        if (val < -0.005) return `background:rgba(244,63,94,${alpha});`;
+        return '';
+      }
+
+      function renderLeaderboard() {
+        const tbody = document.getElementById('leaderboard-tbody');
+        const model = getCurrentModel();
+        const barIdx = getActiveBarIndex();
+
+        let rows = [];
+        model.sectorIds.forEach((id) => {
+          if (!matchesCategoryAndGlobalSearch(id)) return;
+          if (!matchesSearchText(id, state.tableSearchQuery)) return;
+          const pt = model.sectors[id][barIdx];
+          if (!pt) return;
+          rows.push({
+            id,
+            name: id,
+            meta: getSeriesMeta(id),
+            ...pt
+          });
+        });
+
+        if (state.activeQuadrantFilter) {
+          rows = rows.filter((r) => r.quadrant === state.activeQuadrantFilter);
+        }
+
+        const key = state.sortKey;
+        const dir = state.sortDir === 'asc' ? 1 : -1;
+        rows.sort((a, b) => {
+          const va = a[key];
+          const vb = b[key];
+          if (typeof va === 'string') return va.localeCompare(vb) * dir;
+          const na = va === null || va === undefined ? -999999 : va;
+          const nb = vb === null || vb === undefined ? -999999 : vb;
+          return (na - nb) * dir;
+        });
+
+        document.querySelectorAll('.sortable-th').forEach((th) => {
+          const ind = th.querySelector('.sort-ind');
+          if (th.getAttribute('data-sort') === state.sortKey) {
+            th.classList.add('sorted');
+            ind.textContent = state.sortDir === 'asc' ? ' ▲' : ' ▼';
+          } else {
+            th.classList.remove('sorted');
+            ind.textContent = '';
+          }
+        });
+
+        if (!rows.length) {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:28px;color:var(--text-muted);">No indices match your active category, quadrant, or search filter.</td></tr>`;
+          return;
+        }
+
+        const retTxt = (v) => (v === null ? 'text-muted' : v > 0.005 ? 'text-pos' : v < -0.005 ? 'text-neg' : 'text-muted');
+
+        tbody.innerHTML = rows
+          .map((r) => {
+            const isSel = r.id === state.selectedSector;
+            const catInfo = CATEGORY_META[r.meta.category] || CATEGORY_META.theme;
+            const proxyBadge = r.meta.isEtfProxy
+              ? `<span class="pill pill-proxy mono" style="font-size:9px;padding:1px 6px;">${r.meta.ticker}</span>`
+              : '';
+            return `
+              <tr class="${isSel ? 'selected-row' : ''}" data-row="${r.id}">
+                <td>
+                  <div style="display:flex;align-items:center;gap:9px;">
+                    <span style="width:9px;height:9px;border-radius:50%;background:${r.meta.color};flex-shrink:0;"></span>
+                    <div>
+                      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;">
+                        <span style="font-weight:700;color:#fff;">${r.name}</span>
+                        <span class="mono" style="font-size:10px;color:var(--text-muted);">#${r.rank}</span>
+                        <span class="pill ${catInfo.pillClass}" style="font-size:9px;padding:1px 6px;">${catInfo.label}</span>
+                        ${proxyBadge}
+                      </div>
+                      <div class="mono" style="font-size:10.5px;color:var(--text-secondary);">₹${formatINR(r.close)}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="pill pill-${r.quadrant}">${r.quadrant}</span></td>
+                <td class="num-right mono ${r.rsRatio >= 100 ? 'text-pos' : 'text-neg'}" style="font-weight:700;">${r.rsRatio.toFixed(2)}</td>
+                <td class="num-right mono ${r.rsMomentum >= 100 ? 'text-blue' : 'text-amber'}" style="font-weight:700;">${r.rsMomentum.toFixed(2)}</td>
+                <td class="num-right mono">
+                  <span class="pill ${r.emaAbove ? 'pill-Leading' : 'pill-Lagging'} mono">
+                    ${formatSigned(r.emaDist, 2, '%')}
+                  </span>
+                </td>
+                <td class="num-right mono ${retTxt(r.ret1D)}" style="font-weight:700;${heatmapBg(r.ret1D, 2.5)}">${formatSigned(r.ret1D, 2, '%')}</td>
+                <td class="num-right mono ${retTxt(r.ret1W)}" style="font-weight:700;${heatmapBg(r.ret1W, 5.5)}">${formatSigned(r.ret1W, 2, '%')}</td>
+                <td class="num-right mono ${retTxt(r.ret1M)}" style="font-weight:700;${heatmapBg(r.ret1M, 10.5)}">${formatSigned(r.ret1M, 2, '%')}</td>
+                <td class="num-right mono ${retTxt(r.ret3M)}" style="font-weight:700;${heatmapBg(r.ret3M, 18.0)}">${formatSigned(r.ret3M, 2, '%')}</td>
+                <td class="num-right mono">
+                  <span class="${r.isPartial ? 'text-amber' : 'text-muted'}" title="${r.isPartial ? 'Partial listing history inside current dataset' : 'Full dataset history'}">
+                    ${r.historyDays}d${r.isPartial ? ' *' : ''}
+                  </span>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
+
+        tbody.querySelectorAll('tr[data-row]').forEach((tr) => {
+          const id = tr.getAttribute('data-row');
+          tr.addEventListener('click', () => {
+            state.selectedSector = id;
+            state.visibleSectors.add(id);
+            renderAll();
+          });
+        });
+      }
+
+      /* -----------------------------------------------------------------
+       * 15. RENDER: TAB 3 UNIVERSE REFERENCE TABLE (ALL 28 SYMBOLS)
+       * ----------------------------------------------------------------- */
+      function renderUniverseReference(filterText = '') {
+        const tbody = document.getElementById('universe-ref-tbody');
+        const q = (filterText || '').trim().toLowerCase();
+
+        const allEntries = [
+          ...BENCHMARK_DEFS.map((b) => ({
+            id: b.id,
+            ticker: b.ticker,
+            catLabel: 'Benchmark',
+            catClass: 'pill-blue',
+            detail: b.notes
+          })),
+          ...PRECONFIGURED_SERIES.map((s) => {
+            const c = CATEGORY_META[s.category] || CATEGORY_META.theme;
+            return {
+              id: s.id,
+              ticker: s.ticker,
+              catLabel: s.isEtfProxy ? `${c.label} (ETF)` : c.label,
+              catClass: c.pillClass,
+              detail: s.constituents.join(', ')
+            };
+          })
+        ].filter(
+          (row) =>
+            !q ||
+            row.id.toLowerCase().includes(q) ||
+            row.ticker.toLowerCase().includes(q) ||
+            row.catLabel.toLowerCase().includes(q) ||
+            row.detail.toLowerCase().includes(q)
+        );
+
+        tbody.innerHTML = allEntries
+          .map(
+            (r) => `
+            <tr>
+              <td style="font-weight:700;color:#fff;">${r.id}</td>
+              <td>
+                <button type="button" class="constituent-pill mono ref-copy-ticker" data-ticker="${r.ticker}" title="Click to copy ${r.ticker}">
+                  ${r.ticker}
+                </button>
+              </td>
+              <td><span class="pill ${r.catClass}">${r.catLabel}</span></td>
+              <td style="color:var(--text-secondary);white-space:normal;min-width:220px;">${r.detail}</td>
+            </tr>
+          `
+          )
+          .join('');
+
+        tbody.querySelectorAll('.ref-copy-ticker').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const t = btn.getAttribute('data-ticker');
+            copyTextSafe(t, t);
+          });
+        });
+      }
+
+      /* -----------------------------------------------------------------
+       * 16. MASTER UI SYNC & RENDER PIPELINE
+       * ----------------------------------------------------------------- */
+      function syncControlsUI() {
+        const model = getCurrentModel();
+        const maxScrub = getMaxScrubIndex();
+        const barIdx = getActiveBarIndex();
+
+        const scrubber = document.getElementById('date-scrubber');
+        scrubber.max = String(maxScrub);
+        scrubber.value = String(Math.min(state.scrubberOffset, maxScrub));
+        document.getElementById('scrubber-date').textContent = formatDatePretty(model.dates[barIdx]);
+
+        const hasN500 = state.rawDataset && state.rawDataset.benchmarks.includes(BENCHMARK_SECONDARY);
+        const btnN50 = document.getElementById('bench-n50');
+        const btnN500 = document.getElementById('bench-n500');
+        btnN500.classList.toggle('hidden', !hasN500);
+        btnN50.classList.toggle('active-indigo', state.benchmark === BENCHMARK_PRIMARY);
+        btnN500.classList.toggle('active-indigo', state.benchmark === BENCHMARK_SECONDARY);
+
+        document.getElementById('tf-daily').classList.toggle('active', state.timeframe === 'daily');
+        document.getElementById('tf-weekly').classList.toggle('active', state.timeframe === 'weekly');
+
+        const dimBtn = document.getElementById('btn-dim-unfocused');
+        dimBtn.classList.toggle('btn-toggle-on', state.dimUnfocused);
+        dimBtn.classList.toggle('btn-ghost', !state.dimUnfocused);
+
+        const lblBtn = document.getElementById('btn-label-mode');
+        lblBtn.classList.toggle('btn-toggle-on', state.labelMode === 'focus');
+        lblBtn.classList.toggle('btn-ghost', state.labelMode !== 'focus');
+        document.getElementById('label-mode-text').textContent = state.labelMode === 'all' ? 'Labels: All' : 'Labels: Focus';
+      }
+
+      function renderAll() {
+        syncControlsUI();
+        renderCategoryCounts();
+        renderQuadrantKPIs();
+        renderRRGChart();
+        renderSectorChips();
+        renderInspector();
+        renderLeaderboard();
+      }
+
+      /* -----------------------------------------------------------------
+       * 17. 30-PERIOD ANIMATION PLAYBACK CONTROLLER
+       * ----------------------------------------------------------------- */
+      function setPlaying(play) {
+        state.isPlaying = play;
+        const btn = document.getElementById('btn-animate');
+        const label = document.getElementById('animate-label');
+        const iPlay = document.getElementById('icon-play');
+        const iPause = document.getElementById('icon-pause');
+
+        if (state.playTimer) {
+          clearInterval(state.playTimer);
+          state.playTimer = null;
+        }
+
+        if (play) {
+          const maxScrub = getMaxScrubIndex();
+          if (state.scrubberOffset >= maxScrub) state.scrubberOffset = 0;
+          btn.classList.remove('btn-emerald');
+          btn.classList.add('btn-amber');
+          label.textContent = 'Pause';
+          iPlay.classList.add('hidden');
+          iPause.classList.remove('hidden');
+
+          renderAll();
+          state.playTimer = setInterval(() => {
+            const limit = getMaxScrubIndex();
+            state.scrubberOffset = state.scrubberOffset < limit ? state.scrubberOffset + 1 : 0;
+            renderAll();
+          }, 500);
+        } else {
+          btn.classList.remove('btn-amber');
+          btn.classList.add('btn-emerald');
+          label.textContent = 'Animate';
+          iPlay.classList.remove('hidden');
+          iPause.classList.add('hidden');
+        }
+      }
+
+      /* -----------------------------------------------------------------
+       * 18. MODAL, KEYBOARD SHORTCUTS & EVENT BINDINGS
+       * ----------------------------------------------------------------- */
+      function setActiveModalTab(tabName) {
+        state.activeTab = tabName;
+        ['upload', 'github', 'universe'].forEach((t) => {
+          document.getElementById(`tab-btn-${t}`).classList.toggle('active', tabName === t);
+          document.getElementById(`tab-panel-${t}`).classList.toggle('hidden', tabName !== t);
+        });
+        document.getElementById('btn-apply-manual').classList.toggle('hidden', tabName !== 'upload');
+      }
+
+      function initEvents() {
+        document.getElementById('code-fetch-py').textContent = FETCH_EOD_PY;
+        document.getElementById('code-workflow-yml').textContent = WORKFLOW_YML;
+        renderUniverseReference('');
+
+        // Benchmark Switcher
+        document.getElementById('bench-n50').addEventListener('click', () => {
+          if (state.benchmark === BENCHMARK_PRIMARY) return;
+          state.benchmark = BENCHMARK_PRIMARY;
+          renderAll();
+          showToast('Benchmark switched to NIFTY 50', 'info');
+        });
+        document.getElementById('bench-n500').addEventListener('click', () => {
+          if (state.benchmark === BENCHMARK_SECONDARY) return;
+          state.benchmark = BENCHMARK_SECONDARY;
+          renderAll();
+          showToast('Benchmark switched to NIFTY 500', 'info');
+        });
+
+        // Timeframe Switcher
+        document.getElementById('tf-daily').addEventListener('click', () => {
+          if (state.timeframe === 'daily') return;
+          setPlaying(false);
+          state.timeframe = 'daily';
+          state.scrubberOffset = getMaxScrubIndex();
+          renderAll();
+        });
+        document.getElementById('tf-weekly').addEventListener('click', () => {
+          if (state.timeframe === 'weekly') return;
+          setPlaying(false);
+          state.timeframe = 'weekly';
+          state.scrubberOffset = getMaxScrubIndex();
+          renderAll();
+        });
+
+        // Category Filter Pills
+        document.querySelectorAll('.cat-pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.activeCategory = btn.getAttribute('data-category');
+            renderAll();
+          });
+        });
+
+        // Search Inputs & Clarity Toggles
+        document.getElementById('global-search').addEventListener('input', (e) => {
+          state.searchQuery = e.target.value;
+          renderAll();
+        });
+        document.getElementById('table-search').addEventListener('input', (e) => {
+          state.tableSearchQuery = e.target.value;
+          renderLeaderboard();
+        });
+        document.getElementById('btn-dim-unfocused').addEventListener('click', () => {
+          state.dimUnfocused = !state.dimUnfocused;
+          renderAll();
+        });
+        document.getElementById('btn-label-mode').addEventListener('click', () => {
+          state.labelMode = state.labelMode === 'all' ? 'focus' : 'all';
+          renderAll();
+        });
+
+        // Tail Slider, Scrubber, Animate
+        document.getElementById('tail-slider').addEventListener('input', (e) => {
+          state.tailLength = Number(e.target.value);
+          document.getElementById('tail-val').textContent = state.tailLength;
+          renderAll();
+        });
+        document.getElementById('date-scrubber').addEventListener('input', (e) => {
+          if (state.isPlaying) setPlaying(false);
+          state.scrubberOffset = Number(e.target.value);
+          renderAll();
+        });
+        document.getElementById('btn-animate').addEventListener('click', () => setPlaying(!state.isPlaying));
+
+        // Sync Now
+        document.getElementById('btn-sync-now').addEventListener('click', () => {
+          autoFetchGitHubCsv({ silentOnFallback: false });
+        });
+
+        // Quadrant KPI Cards
+        document.querySelectorAll('.kpi-card').forEach((card) => {
+          card.addEventListener('click', () => {
+            const q = card.getAttribute('data-quadrant');
+            state.activeQuadrantFilter = state.activeQuadrantFilter === q ? null : q;
+            renderAll();
+          });
+        });
+        document.getElementById('btn-clear-filter').addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.activeQuadrantFilter = null;
+          renderAll();
+        });
+
+        // Reset Chart View
+        document.getElementById('btn-reset-chart').addEventListener('click', () => {
+          setPlaying(false);
+          state.activeQuadrantFilter = null;
+          state.activeCategory = 'all';
+          state.searchQuery = '';
+          state.tableSearchQuery = '';
+          document.getElementById('global-search').value = '';
+          document.getElementById('table-search').value = '';
+          state.dimUnfocused = false;
+          state.labelMode = 'all';
+          state.tailLength = 6;
+          document.getElementById('tail-slider').value = '6';
+          document.getElementById('tail-val').textContent = '6';
+          state.scrubberOffset = getMaxScrubIndex();
+          getCurrentModel().sectorIds.forEach((id) => state.visibleSectors.add(id));
+          renderAll();
+        });
+
+        // Visibility Chips Quick Buttons
+        document.getElementById('btn-select-all').addEventListener('click', () => {
+          getCurrentModel().sectorIds.forEach((id) => state.visibleSectors.add(id));
+          renderAll();
+        });
+        document.getElementById('btn-select-clear').addEventListener('click', () => {
+          state.visibleSectors.clear();
+          renderAll();
+        });
+        document.getElementById('btn-select-top5').addEventListener('click', () => {
+          const model = getCurrentModel();
+          const barIdx = getActiveBarIndex();
+          const top5 = model.sectorIds
+            .filter((id) => matchesCategoryAndGlobalSearch(id) && model.sectors[id][barIdx])
+            .sort((a, b) => model.sectors[b][barIdx].score - model.sectors[a][barIdx].score)
+            .slice(0, 5);
+          state.visibleSectors = new Set(top5);
+          if (top5[0]) state.selectedSector = top5[0];
+          renderAll();
+        });
+
+        // Leaderboard Sort & Export CSV
+        document.querySelectorAll('.sortable-th').forEach((th) => {
+          th.addEventListener('click', () => {
+            const key = th.getAttribute('data-sort');
+            if (state.sortKey === key) {
+              state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+              state.sortKey = key;
+              state.sortDir = key === 'name' || key === 'quadrant' ? 'asc' : 'desc';
+            }
+            renderLeaderboard();
+          });
+        });
+
+        document.getElementById('btn-export-csv').addEventListener('click', () => {
+          const model = getCurrentModel();
+          const barIdx = getActiveBarIndex();
+          const headers = ['Date', 'Benchmark', 'Name', 'Category', 'Ticker', 'Close', 'Quadrant', 'RS-Ratio', 'RS-Momentum', 'vs_10EMA%', '1D%', '1W%', '1M%', '3M%', 'History_Days'];
+          const lines = [headers.join(',')];
+          model.sectorIds.forEach((id) => {
+            const p = model.sectors[id][barIdx];
+            if (!p) return;
+            const meta = getSeriesMeta(id);
+            lines.push(
+              [
+                p.date,
+                `"${model.benchmark}"`,
+                `"${id}"`,
+                meta.category,
+                meta.ticker || '',
+                p.close.toFixed(2),
+                p.quadrant,
+                p.rsRatio.toFixed(2),
+                p.rsMomentum.toFixed(2),
+                p.emaDist.toFixed(2),
+                p.ret1D === null ? '' : p.ret1D.toFixed(2),
+                p.ret1W === null ? '' : p.ret1W.toFixed(2),
+                p.ret1M === null ? '' : p.ret1M.toFixed(2),
+                p.ret3M === null ? '' : p.ret3M.toFixed(2),
+                p.historyDays
+              ].join(',')
+            );
+          });
+          downloadFile(lines.join('\n'), `nse-rotation-${state.timeframe}-vs-${model.benchmark.replace(/\s+/g, '')}-${model.dates[barIdx]}.csv`, 'text/csv');
+          showToast('Exported leaderboard CSV.', 'success');
+        });
+
+        // Modal Controls (3 Tabs)
+        const modal = document.getElementById('sync-modal');
+        const openModal = (tab = 'github') => {
+          document.getElementById('github-error-box').classList.add('hidden');
+          document.getElementById('manual-error-box').classList.add('hidden');
+          try {
+            document.getElementById('custom-csv-url').value = localStorage.getItem(STORAGE_KEY_URL) || '';
+          } catch (_) {}
+          setActiveModalTab(tab);
+          modal.classList.remove('hidden');
+        };
+        const closeModal = () => modal.classList.add('hidden');
+
+        document.getElementById('btn-open-modal').addEventListener('click', () => openModal('github'));
+        document.getElementById('sync-status-pill').addEventListener('click', () => openModal('github'));
+        document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+        document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeModal();
+        });
+
+        document.getElementById('tab-btn-upload').addEventListener('click', () => setActiveModalTab('upload'));
+        document.getElementById('tab-btn-github').addEventListener('click', () => setActiveModalTab('github'));
+        document.getElementById('tab-btn-universe').addEventListener('click', () => setActiveModalTab('universe'));
+
+        // Tab 3 Search
+        document.getElementById('universe-search').addEventListener('input', (e) => {
+          renderUniverseReference(e.target.value);
+        });
+
+        // Tab 2: Save & Test Custom Raw GitHub URL
+        document.getElementById('btn-save-test-url').addEventListener('click', async () => {
+          const urlInput = document.getElementById('custom-csv-url').value.trim();
+          const errBox = document.getElementById('github-error-box');
+          errBox.classList.add('hidden');
+          if (!urlInput) {
+            errBox.textContent = 'Paste a public raw.githubusercontent.com CSV URL, or click "Reset to ./eod_data.csv".';
+            errBox.classList.remove('hidden');
+            return;
+          }
+          try {
+            localStorage.setItem(STORAGE_KEY_URL, urlInput);
+          } catch (_) {}
+
+          const result = await autoFetchGitHubCsv({ silentOnFallback: true, explicitUrl: urlInput });
+          if (result.ok) {
+            closeModal();
+            showToast(`Synced & saved custom CSV (${result.dataset.dates.length} trading days).`, 'success');
+          } else {
+            errBox.textContent = `Fetch failed: ${result.error}. Verify the link is a public raw CSV containing Date and NIFTY 50 columns.`;
+            errBox.classList.remove('hidden');
+          }
+        });
+
+        document.getElementById('btn-reset-csv-url').addEventListener('click', async () => {
+          try {
+            localStorage.removeItem(STORAGE_KEY_URL);
+          } catch (_) {}
+          document.getElementById('custom-csv-url').value = '';
+          document.getElementById('github-error-box').classList.add('hidden');
+          showToast('Reset data source to ./eod_data.csv', 'info');
+          await autoFetchGitHubCsv({ silentOnFallback: false });
+        });
+
+        // Tab 2: Copy & One-Click Download for fetch_eod.py and update-eod.yml
+        document.getElementById('btn-copy-py').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          copyTextSafe(FETCH_EOD_PY, 'fetch_eod.py');
+        });
+        document.getElementById('btn-dl-py').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadFile(FETCH_EOD_PY, 'fetch_eod.py', 'text/x-python');
+          showToast('Downloaded fetch_eod.py (28 active tickers).', 'success');
+        });
+        document.getElementById('btn-copy-yml').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          copyTextSafe(WORKFLOW_YML, 'update-eod.yml');
+        });
+        document.getElementById('btn-dl-yml').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadFile(WORKFLOW_YML, 'update-eod.yml', 'text/yaml');
+          showToast('Downloaded update-eod.yml (place in .github/workflows/).', 'success');
+        });
+
+        // Tab 1: Upload / Paste & CSV Template Download
+        const dropzone = document.getElementById('file-dropzone');
+        const fileInput = document.getElementById('file-input');
+        const pasteBox = document.getElementById('manual-paste-input');
+        const manualErr = document.getElementById('manual-error-box');
+
+        const readFile = (file) => {
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            pasteBox.value = String(ev.target.result || '');
+            manualErr.classList.add('hidden');
+            showToast(`Loaded "${file.name}" — click Apply Data to recalculate.`, 'info');
+          };
+          reader.readAsText(file);
+        };
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => readFile(e.target.files[0]));
+        dropzone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dropzone.classList.add('dragover');
+        });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropzone.classList.remove('dragover');
+          readFile(e.dataTransfer.files[0]);
+        });
+
+        document.getElementById('btn-apply-manual').addEventListener('click', () => {
+          manualErr.classList.add('hidden');
+          try {
+            const parsed = parseDataPayload(pasteBox.value, 'Manual Upload');
+            setPlaying(false);
+            loadDatasetIntoState(parsed);
+            renderAll();
+            const lastDate = parsed.dates[parsed.dates.length - 1];
+            setSyncPill('live', `Live Synced • ${lastDate} • ${parsed.dates.length} days`);
+            closeModal();
+            showToast(`Applied ${parsed.seriesIds.length} series across ${parsed.dates.length} days.`, 'success');
+          } catch (err) {
+            manualErr.textContent = err.message;
+            manualErr.classList.remove('hidden');
+          }
+        });
+
+        document.getElementById('btn-dl-csv-template').addEventListener('click', () => {
+          const demo = generateTwoYearDemoDataset();
+          const cols = [BENCHMARK_PRIMARY, BENCHMARK_SECONDARY, ...PRECONFIGURED_SERIES.map((s) => s.id)];
+          const lines = [['Date', ...cols].join(',')];
+          for (let i = 0; i < demo.dates.length; i++) {
+            lines.push([demo.dates[i], ...cols.map((c) => (demo.series[c][i] === null ? '' : demo.series[c][i]))].join(','));
+          }
+          downloadFile(lines.join('\n'), 'eod_data.csv', 'text/csv');
+          showToast('Downloaded 28-column eod_data.csv template.', 'success');
+        });
+
+        // Reset to Demo Data
+        document.getElementById('btn-restore-demo').addEventListener('click', () => {
+          setPlaying(false);
+          const demo = generateTwoYearDemoDataset();
+          loadDatasetIntoState(demo);
+          renderAll();
+          setSyncPill('demo', 'Demo Data • Simulated 2Y');
+          closeModal();
+          showToast('Loaded built-in 500-day (2Y) simulated NSE dataset.', 'info');
+        });
+
+        // Keyboard Shortcuts: Esc closes modal, Left/Right scrubs date, Space toggles animation
+        window.addEventListener('keydown', (e) => {
+          const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+          const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+          if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+            return;
+          }
+          if (inInput || !modal.classList.contains('hidden')) return;
+
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (state.isPlaying) setPlaying(false);
+            state.scrubberOffset = Math.max(0, state.scrubberOffset - 1);
+            renderAll();
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (state.isPlaying) setPlaying(false);
+            state.scrubberOffset = Math.min(getMaxScrubIndex(), state.scrubberOffset + 1);
+            renderAll();
+          } else if (e.key === ' ') {
+            e.preventDefault();
+            setPlaying(!state.isPlaying);
+          }
+        });
+
+        // Responsive SVG redraw
+        const ro = new ResizeObserver(() => {
+          if (state.rawDataset) {
+            renderRRGChart();
+            renderInspector();
+          }
+        });
+        ro.observe(document.getElementById('rrg-stage'));
+      }
+
+      /* -----------------------------------------------------------------
+       * 19. BOOTSTRAP & STARTUP AUTO-SYNC
+       * ----------------------------------------------------------------- */
+      window.addEventListener('DOMContentLoaded', () => {
+        initEvents();
+        autoFetchGitHubCsv({ silentOnFallback: true });
+      });
+    })();
+  </script>
+</body>
+</html>
