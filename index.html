@@ -56,21 +56,20 @@
       --cat-theme-text: #67e8f9;
       --cat-theme-border: rgba(6, 182, 212, 0.36);
 
+      --cat-mcap-bg: rgba(99, 102, 241, 0.16);
+      --cat-mcap-text: #c7d2fe;
+      --cat-mcap-border: rgba(129, 140, 248, 0.42);
+
       --cat-broad-bg: rgba(234, 179, 8, 0.14);
       --cat-broad-text: #fde047;
       --cat-broad-border: rgba(234, 179, 8, 0.36);
 
-      --proxy-bg: rgba(217, 70, 239, 0.12);
-      --proxy-text: #f0abfc;
-      --proxy-border: rgba(217, 70, 239, 0.34);
-
-      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
-
       --radius-sm: 8px;
       --radius-md: 11px;
       --radius-lg: 14px;
-      --shadow-card: 0 10px 28px rgba(0, 0, 0, 0.45);
+
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
 
     *, *::before, *::after {
@@ -80,11 +79,7 @@
     html, body {
       margin: 0;
       padding: 0;
-      min-height: 100%;
-      background-color: var(--bg-base);
-      background-image:
-        radial-gradient(ellipse 70% 42% at 10% -10%, rgba(99, 102, 241, 0.09), transparent 60%),
-        radial-gradient(ellipse 60% 38% at 90% -8%, rgba(16, 185, 129, 0.08), transparent 55%);
+      background: var(--bg-base);
       color: var(--text-primary);
       font-family: var(--font-sans);
       font-size: 13.5px;
@@ -93,46 +88,41 @@
       overflow-x: hidden;
     }
 
+    .hidden { display: none !important; }
+
     .mono {
       font-family: var(--font-mono);
       font-variant-numeric: tabular-nums;
     }
-    .hidden {
-      display: none !important;
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinning {
+      animation: spin 0.9s linear infinite;
     }
 
-    ::-webkit-scrollbar {
-      width: 7px;
-      height: 7px;
-    }
-    ::-webkit-scrollbar-track {
-      background: var(--bg-inset);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #273449;
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #3b4f6e;
+    @keyframes syncPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(1.35); }
     }
 
     /* =====================================================================
-     * STICKY HEADER BAR
+     * HEADER BAR & SYNC STATUS PILL
      * ===================================================================== */
     .app-header {
       position: sticky;
       top: 0;
-      z-index: 35;
-      background: rgba(11, 15, 23, 0.92);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      z-index: 40;
+      background: var(--bg-card-translucent);
       border-bottom: 1px solid var(--border-default);
+      backdrop-filter: blur(12px);
     }
 
     .header-inner {
-      max-width: 1640px;
+      max-width: 1560px;
       margin: 0 auto;
-      padding: 10px 18px;
+      padding: 11px 22px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -151,150 +141,131 @@
       width: 38px;
       height: 38px;
       border-radius: 10px;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(99, 102, 241, 0.24));
-      border: 1px solid rgba(129, 140, 248, 0.36);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(99, 102, 241, 0.22));
+      border: 1px solid var(--accent-sky-border);
+      color: var(--accent-sky);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #a5b4fc;
       flex-shrink: 0;
     }
 
     .brand-title {
       margin: 0;
-      font-size: 15.5px;
+      font-size: 16px;
       font-weight: 700;
-      letter-spacing: -0.015em;
       color: #ffffff;
-      line-height: 1.2;
+      letter-spacing: -0.015em;
     }
 
     .brand-subrow {
+      margin-top: 3px;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 7px;
-      margin-top: 4px;
+      gap: 8px;
     }
 
     .sync-pill {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      padding: 3px 10px;
+      gap: 6px;
+      padding: 2.5px 9px;
       border-radius: 9999px;
-      font-size: 11px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
       font-weight: 600;
+      border: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      color: var(--text-secondary);
       cursor: pointer;
-      border: 1px solid transparent;
-      background: transparent;
-      font-family: var(--font-sans);
-      transition: filter 0.15s ease;
-      white-space: nowrap;
+      transition: all 0.15s ease;
     }
     .sync-pill:hover {
-      filter: brightness(1.14);
+      border-color: var(--border-strong);
+      color: #ffffff;
+    }
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #94a3b8;
+      flex-shrink: 0;
     }
     .sync-pill.live {
-      background: var(--q-leading-bg);
-      border-color: var(--q-leading-border);
-      color: var(--q-leading-text);
-    }
-    .sync-pill.preclose {
-      background: var(--q-weakening-bg);
-      border-color: var(--q-weakening-border);
-      color: var(--q-weakening-text);
-    }
-    .sync-pill.demo {
-      background: rgba(56, 189, 248, 0.12);
-      border-color: rgba(148, 163, 184, 0.36);
-      color: #cbd5e1;
-    }
-    .sync-pill.syncing {
-      background: var(--accent-sky-bg);
-      border-color: var(--accent-sky-border);
-      color: #7dd3fc;
-    }
-
-    @keyframes syncPulse {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.72);
-      }
-      50% {
-        transform: scale(1.18);
-        opacity: 0.78;
-        box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
-      }
-    }
-
-    .sync-dot {
-      width: 6.5px;
-      height: 6.5px;
-      border-radius: 50%;
-      flex-shrink: 0;
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.36);
+      color: #6ee7b7;
     }
     .sync-pill.live .sync-dot {
       background: #10b981;
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.85);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+    }
+    .sync-pill.preclose {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.42);
+      color: #fcd34d;
     }
     .sync-pill.preclose .sync-dot {
       background: #f59e0b;
-      animation: syncPulse 1.8s ease-in-out infinite;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.85);
+      animation: syncPulse 1.6s ease-in-out infinite;
+    }
+    .sync-pill.demo {
+      background: rgba(56, 189, 248, 0.11);
+      border-color: rgba(56, 189, 248, 0.32);
+      color: #7dd3fc;
     }
     .sync-pill.demo .sync-dot {
-      background: #60a5fa;
-      box-shadow: 0 0 8px rgba(96, 165, 250, 0.75);
+      background: #38bdf8;
     }
     .sync-pill.syncing .sync-dot {
       background: #38bdf8;
+      animation: syncPulse 1s ease-in-out infinite;
     }
 
     .header-controls {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 9px;
+      gap: 8px;
     }
 
     .segmented {
       display: inline-flex;
-      align-items: center;
       padding: 3px;
       border-radius: 10px;
       background: var(--bg-inset);
       border: 1px solid var(--border-default);
+      gap: 2px;
     }
 
     .seg-btn {
-      border: 1px solid transparent;
+      padding: 5.5px 11px;
+      border: none;
+      border-radius: 7px;
       background: transparent;
       color: var(--text-secondary);
-      padding: 5px 10px;
-      border-radius: 7px;
       font-family: var(--font-sans);
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.14s ease;
-      white-space: nowrap;
     }
-    .seg-btn:hover {
-      color: #ffffff;
-    }
+    .seg-btn:hover { color: #ffffff; }
     .seg-btn.active {
       background: var(--accent-sky-bg);
-      border-color: var(--accent-sky-border);
       color: #7dd3fc;
+      box-shadow: inset 0 0 0 1px var(--accent-sky-border);
     }
     .seg-btn.active-indigo {
       background: var(--q-improving-bg);
-      border-color: var(--q-improving-border);
-      color: var(--q-improving-text);
+      color: #c7d2fe;
+      box-shadow: inset 0 0 0 1px var(--q-improving-border);
     }
 
-    /* Buttons */
+    /* =====================================================================
+     * BUTTONS & INPUTS
+     * ===================================================================== */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -302,311 +273,86 @@
       gap: 6px;
       padding: 7px 12px;
       border-radius: 9px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      color: #e5e7eb;
       font-family: var(--font-sans);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      border: 1px solid var(--border-default);
-      background: var(--bg-elevated);
-      color: var(--text-primary);
       transition: all 0.14s ease;
       white-space: nowrap;
     }
     .btn:hover {
-      border-color: var(--border-strong);
-      background: #202d44;
+      background: #1f2c46;
+      border-color: #475569;
+      color: #ffffff;
+    }
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11.5px;
+      border-radius: 8px;
     }
     .btn-primary {
-      background: linear-gradient(180deg, #0284c7, #0369a1);
+      background: linear-gradient(135deg, #0284c7, #2563eb);
       border-color: rgba(56, 189, 248, 0.45);
       color: #ffffff;
     }
     .btn-primary:hover {
-      background: linear-gradient(180deg, #0ea5e9, #0284c7);
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      border-color: rgba(125, 211, 252, 0.65);
     }
     .btn-emerald {
-      background: linear-gradient(180deg, #059669, #047857);
-      border-color: rgba(52, 211, 153, 0.45);
+      background: linear-gradient(135deg, #059669, #10b981);
+      border-color: rgba(16, 185, 129, 0.5);
       color: #ffffff;
     }
     .btn-emerald:hover {
-      background: linear-gradient(180deg, #10b981, #059669);
+      background: linear-gradient(135deg, #10b981, #34d399);
     }
     .btn-amber {
-      background: linear-gradient(180deg, #d97706, #b45309);
-      border-color: rgba(251, 191, 36, 0.45);
-      color: #ffffff;
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      border-color: rgba(245, 158, 11, 0.55);
+      color: #090d16;
     }
     .btn-ghost {
-      background: var(--bg-inset);
+      background: transparent;
+      border-color: var(--border-default);
       color: var(--text-secondary);
     }
     .btn-ghost:hover {
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
       color: #ffffff;
-      border-color: var(--accent-sky-border);
     }
     .btn-toggle-on {
       background: var(--accent-sky-bg);
       border-color: var(--accent-sky-border);
       color: #7dd3fc;
     }
-    .btn-sm {
-      padding: 5px 9px;
-      font-size: 11px;
-      border-radius: 8px;
-    }
-
-    @keyframes spin360 {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .spinning {
-      animation: spin360 0.75s linear infinite;
-    }
 
     /* =====================================================================
-     * MAIN CONTAINER & CARDS
+     * MAIN CONTAINER, CARDS & FILTER TOOLBAR
      * ===================================================================== */
     .main-container {
-      max-width: 1640px;
-      width: 100%;
+      max-width: 1560px;
       margin: 0 auto;
-      padding: 14px 18px 28px;
+      padding: 16px 22px 28px;
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
 
     .card {
-      background: var(--bg-card-translucent);
+      background: var(--bg-card);
       border: 1px solid var(--border-default);
       border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
       overflow: hidden;
     }
 
-    /* =====================================================================
-     * CATEGORY FILTER BAR + SEARCH + CLARITY CONTROLS
-     * ===================================================================== */
-    .filter-toolbar {
-      padding: 10px 14px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .cat-pills {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .cat-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 9999px;
-      border: 1px solid var(--border-default);
-      background: var(--bg-inset);
-      color: var(--text-secondary);
-      font-family: var(--font-sans);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.14s ease;
-    }
-    .cat-pill:hover {
-      color: #ffffff;
-      border-color: var(--border-strong);
-    }
-    .cat-pill.active {
-      background: var(--accent-sky-bg);
-      border-color: var(--accent-sky-border);
-      color: #e0f2fe;
-    }
-    .cat-pill .count-badge {
-      padding: 1px 6px;
-      border-radius: 9999px;
-      background: rgba(148, 163, 184, 0.16);
-      font-size: 10.5px;
-    }
-    .cat-pill.active .count-badge {
-      background: rgba(56, 189, 248, 0.28);
-      color: #ffffff;
-    }
-
-    .toolbar-right {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      justify-content: flex-end;
-      min-width: 260px;
-    }
-
-    .search-wrap {
-      position: relative;
-      min-width: 220px;
-      flex: 1;
-      max-width: 320px;
-    }
-    .search-wrap svg {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-      pointer-events: none;
-    }
-
-    .text-input {
-      width: 100%;
-      padding: 7px 10px 7px 31px;
-      border-radius: 9px;
-      background: var(--bg-inset);
-      border: 1px solid var(--border-default);
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      font-size: 12px;
-      outline: none;
-      transition: border-color 0.15s ease;
-    }
-    .text-input:focus {
-      border-color: var(--accent-sky);
-    }
-    .text-input-plain {
-      padding-left: 11px;
-    }
-
-    /* =====================================================================
-     * 4 CLICKABLE QUADRANT KPI SUMMARY CARDS
-     * ===================================================================== */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .kpi-card {
-      text-align: left;
-      padding: 13px 15px;
-      border-radius: var(--radius-lg);
-      background: var(--bg-card-translucent);
-      border: 1px solid var(--border-default);
-      cursor: pointer;
-      transition: all 0.16s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      font-family: var(--font-sans);
-      color: inherit;
-    }
-    .kpi-card:hover {
-      transform: translateY(-1px);
-      border-color: var(--border-strong);
-      background: #162033;
-    }
-    .kpi-card.active-Leading {
-      border-color: var(--q-leading);
-      box-shadow: 0 0 0 1px var(--q-leading), 0 8px 22px rgba(16, 185, 129, 0.18);
-      background: rgba(16, 185, 129, 0.08);
-    }
-    .kpi-card.active-Weakening {
-      border-color: var(--q-weakening);
-      box-shadow: 0 0 0 1px var(--q-weakening), 0 8px 22px rgba(245, 158, 11, 0.18);
-      background: rgba(245, 158, 11, 0.08);
-    }
-    .kpi-card.active-Lagging {
-      border-color: var(--q-lagging);
-      box-shadow: 0 0 0 1px var(--q-lagging), 0 8px 22px rgba(244, 63, 94, 0.18);
-      background: rgba(244, 63, 94, 0.08);
-    }
-    .kpi-card.active-Improving {
-      border-color: var(--q-improving);
-      box-shadow: 0 0 0 1px var(--q-improving), 0 8px 22px rgba(99, 102, 241, 0.20);
-      background: rgba(99, 102, 241, 0.10);
-    }
-
-    .kpi-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-      width: 100%;
-    }
-    .kpi-label-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-    .kpi-dot {
-      width: 8.5px;
-      height: 8.5px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .kpi-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .kpi-pos {
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-    .kpi-sub {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-top: 2px;
-    }
-    .kpi-count {
-      font-size: 25px;
-      font-weight: 700;
-      line-height: 1;
-      text-align: right;
-      color: #ffffff;
-    }
-    .kpi-pct {
-      font-size: 10px;
-      text-align: right;
-      margin-top: 3px;
-    }
-    .kpi-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      min-height: 22px;
-    }
-    .mini-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 2px 7px;
-      border-radius: 6px;
-      background: var(--bg-inset);
-      border: 1px solid var(--border-default);
-      font-size: 10px;
-      color: #d1d5db;
-    }
-
-    /* =====================================================================
-     * MAIN TWO-COLUMN WORKSPACE: RRG (LEFT) + INSPECTOR (RIGHT)
-     * ===================================================================== */
-    .workspace-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.92fr) minmax(340px, 1fr);
-      gap: 14px;
-      align-items: stretch;
-    }
-
     .card-header {
-      padding: 12px 16px;
+      padding: 13px 16px;
       border-bottom: 1px solid var(--border-default);
       display: flex;
       flex-wrap: wrap;
@@ -621,26 +367,240 @@
       font-weight: 700;
       color: #ffffff;
       display: flex;
-      align-items: center;
       flex-wrap: wrap;
-      gap: 7px;
+      align-items: center;
+      gap: 8px;
     }
 
     .card-subtitle {
-      margin: 2px 0 0;
+      margin: 3px 0 0;
       font-size: 11.5px;
       color: var(--text-secondary);
     }
 
-    /* Pills & Badges */
+    .filter-toolbar {
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .cat-pills {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5.5px 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .cat-pill:hover {
+      border-color: var(--border-strong);
+      color: #ffffff;
+    }
+    .cat-pill.active {
+      background: var(--accent-sky-bg);
+      border-color: var(--accent-sky-border);
+      color: #ffffff;
+    }
+
+    .count-badge {
+      padding: 1px 6px;
+      border-radius: 9999px;
+      font-size: 10.5px;
+      background: rgba(148, 163, 184, 0.16);
+      color: #cbd5e1;
+    }
+    .cat-pill.active .count-badge {
+      background: rgba(56, 189, 248, 0.24);
+      color: #bae6fd;
+    }
+
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 190px;
+      max-width: 340px;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 10px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 6.5px 11px 6.5px 31px;
+      border-radius: 9px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-inset);
+      color: #f3f4f6;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.14s ease;
+    }
+    .text-input:focus {
+      border-color: var(--accent-sky);
+    }
+    .text-input-plain {
+      padding-left: 11px;
+    }
+
+    /* =====================================================================
+     * QUADRANT KPI SUMMARY CARDS & TWO-COLUMN WORKSPACE
+     * ===================================================================== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi-card {
+      text-align: left;
+      padding: 13px 15px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: var(--font-sans);
+      color: inherit;
+    }
+    .kpi-card.active-Leading {
+      border-color: var(--q-leading);
+      background: rgba(16, 185, 129, 0.10);
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
+    }
+    .kpi-card.active-Weakening {
+      border-color: var(--q-weakening);
+      background: rgba(245, 158, 11, 0.10);
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
+    }
+    .kpi-card.active-Lagging {
+      border-color: var(--q-lagging);
+      background: rgba(244, 63, 94, 0.10);
+      box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.35);
+    }
+    .kpi-card.active-Improving {
+      border-color: var(--q-improving);
+      background: rgba(99, 102, 241, 0.12);
+      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.38);
+    }
+
+    .kpi-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .kpi-label-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .kpi-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .kpi-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .kpi-pos {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .kpi-sub {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .kpi-count {
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1.05;
+      color: #ffffff;
+      text-align: right;
+    }
+    .kpi-pct {
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-top: 2px;
+      text-align: right;
+    }
+    .kpi-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-height: 22px;
+    }
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6.5px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      color: #d1d5db;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.72fr) minmax(330px, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    /* =====================================================================
+     * SEMANTIC PILLS & BADGES
+     * ===================================================================== */
     .pill {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 2px 8px;
+      gap: 4px;
+      padding: 2.5px 8.5px;
       border-radius: 9999px;
       font-size: 10.5px;
-      font-weight: 600;
+      font-weight: 700;
       border: 1px solid transparent;
       white-space: nowrap;
     }
@@ -650,9 +610,14 @@
       border-color: var(--accent-sky-border);
     }
     .pill-proxy {
-      background: var(--proxy-bg);
-      color: var(--proxy-text);
-      border-color: var(--proxy-border);
+      background: rgba(168, 85, 247, 0.14);
+      color: #d8b4fe;
+      border-color: rgba(168, 85, 247, 0.36);
+    }
+    .pill-Leading {
+      background: var(--q-leading-bg);
+      color: var(--q-leading-text);
+      border-color: var(--q-leading-border);
     }
     .pill-cat-core {
       background: var(--cat-core-bg);
@@ -664,15 +629,166 @@
       color: var(--cat-theme-text);
       border-color: var(--cat-theme-border);
     }
+    .pill-cat-mcap {
+      background: var(--cat-mcap-bg);
+      color: var(--cat-mcap-text);
+      border-color: var(--cat-mcap-border);
+    }
     .pill-cat-broad {
       background: var(--cat-broad-bg);
       color: var(--cat-broad-text);
       border-color: var(--cat-broad-border);
     }
-    .pill-Leading {
-      background: var(--q-leading-bg);
-      color: var(--q-leading-text);
+    .kpi-card:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      background: #162033;
+    }
+
+    /* =====================================================================
+     * MARKET-CAP STRENGTH REGIME STRIP (TOP-DOWN STEP 1: LARGE vs MID vs SMALL)
+     * ===================================================================== */
+    .mcap-strip {
+      padding: 12px 15px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .mcap-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .mcap-title-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mcap-verdict {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .mcap-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mcap-card {
+      text-align: left;
+      padding: 11px 12px;
+      border-radius: var(--radius-md);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-family: var(--font-sans);
+      color: inherit;
+      position: relative;
+    }
+    .mcap-card:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      background: #111a2c;
+    }
+    .mcap-card.is-leader {
       border-color: var(--q-leading-border);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.10), rgba(11, 17, 32, 0.96));
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.22);
+    }
+    .mcap-card.is-selected {
+      border-color: var(--accent-sky);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45);
+    }
+    .mcap-card.is-missing {
+      opacity: 0.55;
+      cursor: default;
+    }
+    .mcap-card.is-missing:hover {
+      transform: none;
+      border-color: var(--border-default);
+      background: var(--bg-inset);
+    }
+
+    .mcap-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .mcap-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .mcap-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mcap-tier {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+    .mcap-rank-badge {
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(148, 163, 184, 0.14);
+      color: #cbd5e1;
+      flex-shrink: 0;
+    }
+    .mcap-rank-badge.rank-1 {
+      background: var(--q-leading-bg);
+      border: 1px solid var(--q-leading-border);
+      color: var(--q-leading-text);
+    }
+
+    .mcap-mid-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .mcap-bar-track {
+      width: 100%;
+      height: 4px;
+      border-radius: 9999px;
+      background: rgba(148, 163, 184, 0.15);
+      overflow: hidden;
+    }
+    .mcap-bar-fill {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 0.25s ease;
+    }
+
+    .mcap-foot-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      padding-top: 2px;
+      border-top: 1px solid rgba(30, 41, 59, 0.8);
     }
     .pill-Weakening {
       background: var(--q-weakening-bg);
@@ -1284,6 +1400,9 @@
       .workspace-grid {
         grid-template-columns: 1fr;
       }
+      .mcap-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
       .rrg-stage {
         height: 460px;
       }
@@ -1291,6 +1410,9 @@
 
     @media (max-width: 860px) {
       .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .mcap-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .header-inner {
@@ -1306,6 +1428,9 @@
 
     @media (max-width: 540px) {
       .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+      .mcap-grid {
         grid-template-columns: 1fr;
       }
       .rrg-stage {
@@ -1384,12 +1509,34 @@
   <!-- =================================================================== -->
   <main class="main-container">
 
+    <!-- 0. MARKET-CAP STRENGTH REGIME STRIP (TOP-DOWN STEP 1) -->
+    <section id="mcap-strip" class="card mcap-strip" aria-label="Market-Cap Strength Regime">
+      <div class="mcap-header">
+        <div>
+          <div class="mcap-title-group">
+            <span style="font-size:13px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">Market-Cap Strength Regime</span>
+            <span id="mcap-bench-pill" class="pill pill-cat-mcap mono">vs NIFTY 500</span>
+            <span id="mcap-leader-pill" class="pill pill-Leading mono">Leader: --</span>
+          </div>
+          <div id="mcap-verdict" class="mcap-verdict">Comparing Large, Next 50, Midcap, and Smallcap relative strength on an equal footing.</div>
+        </div>
+        <button id="btn-plot-mcap" class="btn btn-sm btn-ghost" style="color:#c7d2fe;border-color:rgba(129,140,248,0.36);">
+          <span>Plot Cap Rotation on RRG →</span>
+        </button>
+      </div>
+      <div id="mcap-cards-grid" class="mcap-grid"></div>
+    </section>
+
     <!-- 1. CATEGORY FILTER BAR + SEARCH + CLARITY CONTROLS -->
     <section class="card filter-toolbar" aria-label="Category filter and clarity controls">
       <div class="cat-pills" role="group" aria-label="Universe category filter">
         <button class="cat-pill active" data-category="all">
           <span>All</span>
-          <span id="cat-count-all" class="count-badge mono">26</span>
+          <span id="cat-count-all" class="count-badge mono">28</span>
+        </button>
+        <button class="cat-pill" data-category="mcap" title="Compares NIFTY 50, NIFTY 100, NIFTY NEXT 50, MIDCAP 150, and SMALLCAP 250 against NIFTY 500">
+          <span>Market Cap</span>
+          <span id="cat-count-mcap" class="count-badge mono">5</span>
         </button>
         <button class="cat-pill" data-category="core">
           <span>Core Sectors</span>
@@ -1399,9 +1546,9 @@
           <span>Themes</span>
           <span id="cat-count-theme" class="count-badge mono">10</span>
         </button>
-        <button class="cat-pill" data-category="broad">
-          <span>Broad &amp; Risk-Off</span>
-          <span id="cat-count-broad" class="count-badge mono">4</span>
+        <button class="cat-pill" data-category="riskoff">
+          <span>Risk-Off</span>
+          <span id="cat-count-riskoff" class="count-badge mono">2</span>
         </button>
       </div>
 
@@ -1739,7 +1886,7 @@
 
     <footer class="app-footer">
       <div>
-        <strong style="color:#d1d5db;">NSE Sector &amp; Theme Rotation Tracker:</strong> Auto-fetches <span class="mono">./eod_data.csv</span> on GitHub Pages (<span class="mono">?csv=...</span> supported). 28 preconfigured symbols + automatic detection for any extra CSV columns. Analytical dashboard only; not SEBI-registered investment advice.
+        <strong style="color:#d1d5db;">NSE Sector &amp; Theme Rotation Tracker:</strong> Auto-fetches <span class="mono">./eod_data.csv</span> on GitHub Pages (<span class="mono">?csv=...</span> supported). 30 preconfigured symbols (Market-Cap Ladder + 12 Core Sectors + 10 Themes + Risk-Off) + automatic detection for extra CSV columns. Analytical dashboard only; not SEBI-registered investment advice.
       </div>
       <div class="mono">Zero-CDN Client-Side RRG · Daily &amp; Weekly Fri Close</div>
     </footer>
@@ -1754,7 +1901,7 @@
         <div>
           <h3 id="modal-title" style="margin:0;font-size:15.5px;font-weight:700;color:#fff;">Data &amp; GitHub Auto-Sync</h3>
           <p style="margin:3px 0 0;font-size:12px;color:var(--text-secondary);">
-            Upload/paste EOD prices, configure daily GitHub Actions auto-sync, or browse all 28 preconfigured NSE symbols.
+            Upload/paste EOD prices, configure daily GitHub Actions auto-sync, or browse all 30 preconfigured NSE symbols.
           </p>
         </div>
         <button id="btn-close-modal" class="btn btn-sm btn-ghost" aria-label="Close modal">✕</button>
@@ -1763,14 +1910,14 @@
       <div class="modal-tabs" role="tablist">
         <button id="tab-btn-upload" class="tab-btn active" role="tab" aria-selected="true">1. Upload / Paste EOD</button>
         <button id="tab-btn-github" class="tab-btn" role="tab" aria-selected="false">2. GitHub Auto-Sync Setup</button>
-        <button id="tab-btn-universe" class="tab-btn" role="tab" aria-selected="false">3. Universe Reference (28)</button>
+        <button id="tab-btn-universe" class="tab-btn" role="tab" aria-selected="false">3. Universe Reference (30)</button>
       </div>
 
       <!-- TAB 1: UPLOAD / PASTE EOD -->
       <div id="tab-panel-upload" class="modal-body">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:11px;background:rgba(56,189,248,0.09);border:1px solid rgba(56,189,248,0.26);">
           <div style="color:#d1d5db;">
-            <strong style="color:#fff;">Download 28-Column CSV Template:</strong> Includes <span class="mono">Date</span>, <span class="mono">NIFTY 50</span>, <span class="mono">NIFTY 500</span>, 12 Core Sectors, 10 Themes, and 4 Broad/Risk-Off ETFs (with partial-history IPO &amp; Railways blanks).
+            <strong style="color:#fff;">Download 30-Column CSV Template:</strong> Includes <span class="mono">Date</span>, <span class="mono">NIFTY 50</span>, <span class="mono">NIFTY 500</span>, 4 Market-Cap Tiers (<span class="mono">NIFTY 100</span>, <span class="mono">NEXT 50</span>, <span class="mono">MIDCAP 150</span>, <span class="mono">SMALLCAP 250</span>), 12 Core Sectors, 10 Themes, and 2 Risk-Off Metals.
           </div>
           <button id="btn-dl-csv-template" class="btn btn-sm btn-primary">Download CSV Template</button>
         </div>
@@ -1841,7 +1988,7 @@
         <!-- Ready-to-use fetch_eod.py (Copy + Download) -->
         <details class="code-disclosure" open>
           <summary>
-            <span>📄 <span class="mono">fetch_eod.py</span> — 28 Tickers, ^CRSLDX + ETF Fallbacks, 5m Pre-Close Merge &amp; last_updated.json</span>
+            <span>📄 <span class="mono">fetch_eod.py</span> — 30 Tickers (Market-Cap Ladder + Sectors + Themes), ^CRSLDX &amp; ETF Fallbacks, 5m Pre-Close Merge</span>
             <div style="display:flex;gap:6px;">
               <button type="button" id="btn-copy-py" class="btn btn-sm btn-ghost">Copy</button>
               <button type="button" id="btn-dl-py" class="btn btn-sm btn-primary">Download fetch_eod.py</button>
@@ -1867,11 +2014,11 @@
         </details>
       </div>
 
-      <!-- TAB 3: UNIVERSE REFERENCE (28 SYMBOLS) -->
+      <!-- TAB 3: UNIVERSE REFERENCE (30 SYMBOLS) -->
       <div id="tab-panel-universe" class="modal-body hidden">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
           <div style="color:var(--text-secondary);">
-            All <strong style="color:#fff;">28 preconfigured columns</strong> (2 Benchmarks + 12 Core Sectors + 10 Themes + 4 Broad/Risk-Off ETFs). Click any ticker to copy.
+            All <strong style="color:#fff;">30 preconfigured columns</strong> (2 Benchmarks + 4 Market-Cap Tiers + 12 Core Sectors + 10 Themes + 2 Risk-Off ETFs). Click any ticker to copy.
           </div>
           <div class="search-wrap" style="max-width:250px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1917,7 +2064,7 @@
       'use strict';
 
       /* -----------------------------------------------------------------
-       * 1. COMPLETE PRECONFIGURED UNIVERSE (2 BENCHMARKS + 26 SERIES = 28)
+       * 1. COMPLETE PRECONFIGURED UNIVERSE (2 BENCHMARKS + 28 SERIES = 30)
        * ----------------------------------------------------------------- */
       const BENCHMARK_PRIMARY = 'NIFTY 50';
       const BENCHMARK_SECONDARY = 'NIFTY 500';
@@ -1925,12 +2072,61 @@
       const STORAGE_KEY_URL = 'nse_rrg_theme_custom_csv_url_v3';
       const DEFAULT_CSV_PATH = './eod_data.csv';
 
+      const MARKET_CAP_IDS = [
+        'NIFTY 50',
+        'NIFTY 100',
+        'NIFTY NEXT 50',
+        'NIFTY MIDCAP 150',
+        'NIFTY SMALLCAP 250'
+      ];
+
+      const MARKET_CAP_TIERS = {
+        'NIFTY 50': { label: 'Large Cap · Top 50', hint: 'Large-cap heavyweights — focus liquid blue-chip leaders.' },
+        'NIFTY 100': { label: 'Large Cap · Top 100', hint: 'Broad large-cap strength — focus Nifty 100 trend leaders.' },
+        'NIFTY NEXT 50': { label: 'Large #51–100', hint: 'Broadening beyond Nifty 50 — focus Next 50 momentum names.' },
+        'NIFTY MIDCAP 150': { label: 'Midcap · 150', hint: 'Risk-on institutional appetite — focus quality midcap breakouts.' },
+        'NIFTY SMALLCAP 250': { label: 'Smallcap · 250', hint: 'Broad high-beta risk appetite — focus liquid smallcap leaders.' }
+      };
+
       const BENCHMARK_DEFS = [
-        { id: 'NIFTY 50', ticker: '^NSEI', category: 'benchmark', notes: 'Primary NSE Large-Cap Benchmark (50 stocks)' },
+        { id: 'NIFTY 50', ticker: '^NSEI', category: 'benchmark', notes: 'Primary NSE Large-Cap Benchmark (also plotted in Market Cap view vs NIFTY 500)' },
         { id: 'NIFTY 500', ticker: '^CRSLDX', category: 'benchmark', notes: 'Broad NSE Market Benchmark (500 stocks · Fallback: MONIFTY500.NS)' }
       ];
 
+      // Plottable metadata for NIFTY 50 when benchmark is switched to NIFTY 500
+      const NIFTY50_SERIES_META = {
+        id: 'NIFTY 50',
+        short: 'NIFTY50',
+        ticker: '^NSEI',
+        category: 'mcap',
+        isEtfProxy: false,
+        color: '#f1f5f9',
+        constituents: ['HDFCBANK', 'RELIANCE', 'ICICIBANK', 'INFY', 'BHARTIARTL']
+      };
+
       const PRECONFIGURED_SERIES = [
+        // --- CATEGORY: mcap (Market-Cap Ladder; NIFTY 50 joins automatically vs NIFTY 500) ---
+        {
+          id: 'NIFTY 100', short: 'NIFTY100', ticker: '^CNX100', category: 'mcap', isEtfProxy: false, color: '#818cf8',
+          basePrice: 23450, constituents: ['RELIANCE', 'HDFCBANK', 'TCS', 'BHARTIARTL', 'ICICIBANK'],
+          phase: 0.45, freq: 0.041, amp: 0.032, drift: 0.00018, vol: 0.0056
+        },
+        {
+          id: 'NIFTY NEXT 50', short: 'NEXT50', ticker: 'JUNIORBEES.NS', category: 'mcap', isEtfProxy: true, color: '#2dd4bf',
+          basePrice: 685.0, constituents: ['HAL', 'BEL', 'INTERGLOBE', 'DLF', 'VEDL'],
+          phase: 0.85, freq: 0.043, amp: 0.068, drift: 0.00036, vol: 0.0086
+        },
+        {
+          id: 'NIFTY MIDCAP 150', short: 'MID150', ticker: 'MID150BEES.NS', category: 'mcap', isEtfProxy: true, color: '#eab308',
+          basePrice: 192.4, constituents: ['MAXHEALTH', 'SUZLON', 'CUMMINSIND', 'PERSISTENT', 'DIXON'],
+          phase: 1.08, freq: 0.042, amp: 0.075, drift: 0.00042, vol: 0.0085
+        },
+        {
+          id: 'NIFTY SMALLCAP 250', short: 'SML250', ticker: 'HDFCSML250.NS', category: 'mcap', isEtfProxy: true, color: '#ff6b6b',
+          basePrice: 158.8, constituents: ['MCX', 'CDSL', 'KPITTECH', 'CAMS', 'LAURUSLABS'],
+          phase: 2.45, freq: 0.046, amp: 0.092, drift: 0.00036, vol: 0.0102
+        },
+
         // --- CATEGORY: core (12 Core NSE Sectors) ---
         {
           id: 'NIFTY BANK', short: 'BANK', ticker: '^NSEBANK', category: 'core', isEtfProxy: false, color: '#10b981',
@@ -2047,24 +2243,14 @@
           phase: 5.38, freq: 0.046, amp: 0.096, drift: 0.00035, vol: 0.0102
         },
 
-        // --- CATEGORY: broad (4 Broad Market & Risk-Off Metals via ETF Proxies) ---
+        // --- CATEGORY: riskoff (Risk-Off Precious Metals via ETF Proxies) ---
         {
-          id: 'NIFTY MIDCAP 150', short: 'MID150', ticker: 'MID150BEES.NS', category: 'broad', isEtfProxy: true, color: '#eab308',
-          basePrice: 192.4, constituents: ['MAXHEALTH', 'SUZLON', 'CUMMINSIND', 'PERSISTENT', 'DIXON'],
-          phase: 1.08, freq: 0.042, amp: 0.075, drift: 0.00042, vol: 0.0085
-        },
-        {
-          id: 'NIFTY SMALLCAP 250', short: 'SML250', ticker: 'HDFCSML250.NS', category: 'broad', isEtfProxy: true, color: '#ff6b6b',
-          basePrice: 158.8, constituents: ['MCX', 'CDSL', 'KPITTECH', 'CAMS', 'LAURUSLABS'],
-          phase: 2.45, freq: 0.046, amp: 0.092, drift: 0.00036, vol: 0.0102
-        },
-        {
-          id: 'GOLD ETF', short: 'GOLD', ticker: 'GOLDBEES.NS', category: 'broad', isEtfProxy: true, proxyKind: 'Commodity Risk-Off ETF', color: '#facc15',
+          id: 'GOLD ETF', short: 'GOLD', ticker: 'GOLDBEES.NS', category: 'riskoff', isEtfProxy: true, proxyKind: 'Commodity Risk-Off ETF', color: '#facc15',
           basePrice: 64.5, constituents: ['Physical Gold (MCX / Domestic Spot)'],
           phase: 4.15, freq: 0.036, amp: 0.078, drift: 0.00038, vol: 0.0078
         },
         {
-          id: 'SILVER ETF', short: 'SILVER', ticker: 'SILVERBEES.NS', category: 'broad', isEtfProxy: true, proxyKind: 'Commodity Risk-Off ETF', color: '#cbd5e1',
+          id: 'SILVER ETF', short: 'SILVER', ticker: 'SILVERBEES.NS', category: 'riskoff', isEtfProxy: true, proxyKind: 'Commodity Risk-Off ETF', color: '#cbd5e1',
           basePrice: 86.2, constituents: ['Physical Silver (MCX / Domestic Spot)'],
           phase: 4.42, freq: 0.041, amp: 0.110, drift: 0.00044, vol: 0.0122
         }
@@ -2084,6 +2270,9 @@
       HEADER_ALIASES['^CNX500'] = 'NIFTY 500';
       HEADER_ALIASES['^CRSLDX'] = 'NIFTY 500';
       HEADER_ALIASES['MONIFTY500.NS'] = 'NIFTY 500';
+      HEADER_ALIASES['^CNX100'] = 'NIFTY 100';
+      HEADER_ALIASES['NIF100BEES.NS'] = 'NIFTY 100';
+      HEADER_ALIASES['JUNIORBEES.NS'] = 'NIFTY NEXT 50';
       HEADER_ALIASES['PHARMABEES.NS'] = 'NIFTY PHARMA';
       HEADER_ALIASES['METALIETF.NS'] = 'NIFTY METAL';
       HEADER_ALIASES['ITBEES.NS'] = 'NIFTY IT';
@@ -2092,9 +2281,10 @@
       const EXTRA_COLORS = ['#22d3ee', '#a855f7', '#fb923c', '#4ade80', '#f472b6', '#fde047', '#38bdf8', '#e879f9'];
 
       const CATEGORY_META = {
+        mcap: { label: 'Market Cap', pillClass: 'pill-cat-mcap' },
         core: { label: 'Core Sector', pillClass: 'pill-cat-core' },
         theme: { label: 'Theme', pillClass: 'pill-cat-theme' },
-        broad: { label: 'Broad & Risk-Off', pillClass: 'pill-cat-broad' }
+        riskoff: { label: 'Risk-Off', pillClass: 'pill-cat-broad' }
       };
 
       const QUADRANT_INFO = {
@@ -2108,11 +2298,11 @@
           signal: 'Relative weakness: underperforming with negative momentum. Wait for RS-Momentum to curl upward before anticipating a turn.'
         },
         Improving: {
-          signal: 'Early rotation signal: still underperforming overall, but gaining relative momentum. Monitor for a clockwise breakout into Leading.'
+          signal: 'Early rotation turn: still below 100 RS-Ratio, but RS-Momentum is positive and curling higher. Watch for breakout above the 10-EMA.'
         }
       };
 
-      // Complete, ready-to-use fetch_eod.py with ^CRSLDX, FALLBACK_TICKERS, 5m Pre-Close merge & last_updated.json
+      // Complete, ready-to-use fetch_eod.py with 30 tickers (Market-Cap Ladder + Sectors + Themes + Risk-Off)
       const FETCH_EOD_PY = `import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -2120,11 +2310,17 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
 
-# Complete 28-column NSE Sector & Theme Rotation Universe
+# Complete 30-column NSE Market-Cap, Sector & Theme Rotation Universe
 TICKERS = {
     # Benchmarks (2)
     "^NSEI": "NIFTY 50",
     "^CRSLDX": "NIFTY 500",
+
+    # Market-Cap Tiers (4 additional — NIFTY 50 above completes the 5-tier cap ladder vs NIFTY 500)
+    "^CNX100": "NIFTY 100",
+    "JUNIORBEES.NS": "NIFTY NEXT 50",
+    "MID150BEES.NS": "NIFTY MIDCAP 150",
+    "HDFCSML250.NS": "NIFTY SMALLCAP 250",
 
     # Core NSE Sectors (12)
     "^NSEBANK": "NIFTY BANK",
@@ -2152,9 +2348,7 @@ TICKERS = {
     "CONSUMBEES.NS": "NIFTY CONSUMPTION",
     "TNIDETF.NS": "NIFTY DIGITAL",
 
-    # Broad Market & Risk-Off Metals via ETF Proxies (4)
-    "MID150BEES.NS": "NIFTY MIDCAP 150",
-    "HDFCSML250.NS": "NIFTY SMALLCAP 250",
+    # Risk-Off Precious Metals via ETF Proxies (2)
     "GOLDBEES.NS": "GOLD ETF",
     "SILVERBEES.NS": "SILVER ETF",
 }
@@ -2162,6 +2356,7 @@ TICKERS = {
 # Automatic liquid ETF fallbacks if Yahoo skips a raw index ticker
 FALLBACK_TICKERS = {
     "NIFTY 500": "MONIFTY500.NS",
+    "NIFTY 100": "NIF100BEES.NS",
     "NIFTY PHARMA": "PHARMABEES.NS",
     "NIFTY METAL": "METALIETF.NS",
     "NIFTY IT": "ITBEES.NS",
@@ -2323,6 +2518,7 @@ jobs:
        * 2. DYNAMIC METADATA REGISTRY (AUTO-ADDS EXTRA CSV COLUMNS TO theme)
        * ----------------------------------------------------------------- */
       const seriesMetaMap = new Map();
+      seriesMetaMap.set(NIFTY50_SERIES_META.id, NIFTY50_SERIES_META);
       PRECONFIGURED_SERIES.forEach((s) => seriesMetaMap.set(s.id, s));
 
       function getSeriesMeta(seriesId) {
@@ -2540,19 +2736,27 @@ jobs:
         const historyMeta = {};
         const validIds = [];
 
-        tf.seriesIds.forEach((id) => {
+        // Include NIFTY 50 as a plottable Market-Cap series whenever comparing against NIFTY 500
+        const candidateIds =
+          benchCol !== BENCHMARK_PRIMARY && Array.isArray(tf.series[BENCHMARK_PRIMARY])
+            ? [BENCHMARK_PRIMARY, ...tf.seriesIds]
+            : [...tf.seriesIds];
+
+        candidateIds.forEach((id) => {
           const fullPrices = tf.series[id];
           const dailyPrices = rawDataset.series[id];
           if (!Array.isArray(fullPrices) || fullPrices.length !== totalBars) return;
 
-          // Daily valid trading days count + first listing date for partial-history reporting
+          // Daily valid history count & first listing date
           let dailyValidCount = 0;
-          let firstListingDate = null;
-          for (let d = 0; d < dailyPrices.length; d++) {
-            const val = dailyPrices[d];
-            if (val !== null && Number.isFinite(val) && val > 0) {
-              if (!firstListingDate) firstListingDate = rawDataset.dates[d];
-              dailyValidCount++;
+          let firstListingDate = rawDataset.dates[0];
+          if (Array.isArray(dailyPrices)) {
+            for (let d = 0; d < totalDailyDays; d++) {
+              const v = dailyPrices[d];
+              if (v !== null && Number.isFinite(v) && v > 0) {
+                if (dailyValidCount === 0) firstListingDate = rawDataset.dates[d];
+                dailyValidCount++;
+              }
             }
           }
 
@@ -2900,12 +3104,17 @@ jobs:
         syncMeta: null
       };
 
-      function getCurrentModel() {
-        const key = `${state.timeframe}|${state.benchmark}`;
+      function getModelFor(timeframe, benchmarkKey) {
+        const bench = state.rawDataset && state.rawDataset.series[benchmarkKey] ? benchmarkKey : BENCHMARK_PRIMARY;
+        const key = `${timeframe}|${bench}`;
         if (!state.models[key]) {
-          state.models[key] = computeRRGModel(state.rawDataset, state.timeframe, state.benchmark);
+          state.models[key] = computeRRGModel(state.rawDataset, timeframe, bench);
         }
         return state.models[key];
+      }
+
+      function getCurrentModel() {
+        return getModelFor(state.timeframe, state.benchmark);
       }
 
       function getMaxScrubIndex() {
@@ -2947,7 +3156,7 @@ jobs:
         }
 
         const model = getCurrentModel();
-        state.visibleSectors = new Set(model.sectorIds);
+        state.visibleSectors = new Set([...dataset.seriesIds, BENCHMARK_PRIMARY]);
         state.scrubberOffset = getMaxScrubIndex();
         state.activeQuadrantFilter = null;
         state.dimUnfocused = false;
@@ -3191,23 +3400,159 @@ jobs:
       }
 
       /* -----------------------------------------------------------------
-       * 9. RENDER: CATEGORY COUNTS & 4 QUADRANT KPI CARDS
+       * 9. RENDER: MARKET-CAP STRENGTH STRIP, CATEGORY COUNTS & KPI CARDS
        * ----------------------------------------------------------------- */
+      function renderMarketCapStrip() {
+        const grid = document.getElementById('mcap-cards-grid');
+        if (!grid || !state.rawDataset) return;
+
+        const hasN500 = state.rawDataset.benchmarks.includes(BENCHMARK_SECONDARY);
+        const mcapBench = hasN500 ? BENCHMARK_SECONDARY : BENCHMARK_PRIMARY;
+        const mcapModel = getModelFor(state.timeframe, mcapBench);
+        const barIdx = Math.min(getActiveBarIndex(), mcapModel.totalBars - 1);
+
+        document.getElementById('mcap-bench-pill').textContent = `vs ${mcapBench}`;
+
+        // Collect all 5 cap-tier snapshots on the active bar
+        const entries = MARKET_CAP_IDS.map((id) => {
+          const meta = getSeriesMeta(id);
+          const tier = MARKET_CAP_TIERS[id] || { label: 'Market Cap', hint: '' };
+          const isBaseline = id === mcapBench;
+          const pt = !isBaseline && mcapModel.sectors[id] ? mcapModel.sectors[id][barIdx] : null;
+          return { id, meta, tier, isBaseline, pt, capRank: null };
+        });
+
+        // Rank available tiers by composite RRG strength score
+        const ranked = entries
+          .filter((e) => e.pt)
+          .sort((a, b) => b.pt.score - a.pt.score);
+        ranked.forEach((e, idx) => {
+          e.capRank = idx + 1;
+        });
+
+        const leader = ranked[0] || null;
+        const leaderPill = document.getElementById('mcap-leader-pill');
+        const verdictEl = document.getElementById('mcap-verdict');
+
+        if (leader) {
+          leaderPill.textContent = `Strongest: ${leader.id} (${leader.pt.quadrant})`;
+          leaderPill.className = `pill pill-${leader.pt.quadrant} mono`;
+          const emaNote = leader.pt.emaAbove
+            ? `above 10-EMA (${formatSigned(leader.pt.emaDist, 2, '%')})`
+            : `below 10-EMA (${formatSigned(leader.pt.emaDist, 2, '%')})`;
+          verdictEl.textContent = `${leader.tier.hint} Currently #1 vs ${mcapBench} (RS-Ratio ${leader.pt.rsRatio.toFixed(2)}, ${emaNote}). Click any tier to plot on RRG.`;
+        } else {
+          leaderPill.textContent = 'Update CSV';
+          leaderPill.className = 'pill pill-blue mono';
+          verdictEl.textContent = 'Sync updated fetch_eod.py with NIFTY 500 (^CRSLDX) and NIFTY 100 (^CNX100) to rank all 5 market-cap tiers.';
+        }
+
+        const retCls = (v) => (v === null ? 'text-muted' : v >= 0 ? 'text-pos' : 'text-neg');
+
+        grid.innerHTML = entries
+          .map((e) => {
+            if (!e.pt) {
+              const reason = e.isBaseline
+                ? 'Active baseline — add NIFTY 500 to rank NIFTY 50'
+                : `Missing in CSV — update fetch_eod.py (${e.meta.ticker})`;
+              return `
+                <div class="mcap-card is-missing">
+                  <div class="mcap-card-top">
+                    <div>
+                      <div class="mcap-name-row">
+                        <span style="width:8px;height:8px;border-radius:50%;background:${e.meta.color};flex-shrink:0;"></span>
+                        <span class="mcap-name">${e.id}</span>
+                      </div>
+                      <div class="mcap-tier">${e.tier.label}</div>
+                    </div>
+                    <span class="mcap-rank-badge mono">--</span>
+                  </div>
+                  <div style="font-size:10.5px;color:var(--text-muted);line-height:1.35;">${reason}</div>
+                </div>
+              `;
+            }
+
+            const isLeader = e.capRank === 1;
+            const isSel = state.selectedSector === e.id && state.benchmark === mcapBench;
+            // Map RS-Ratio ~[97..103] cleanly onto 10%..100% strength bar
+            const barPct = Math.max(10, Math.min(100, Math.round(((e.pt.rsRatio - 97) / 6) * 100)));
+            const barColor =
+              e.pt.quadrant === 'Leading'
+                ? 'var(--q-leading)'
+                : e.pt.quadrant === 'Improving'
+                  ? 'var(--q-improving)'
+                  : e.pt.quadrant === 'Weakening'
+                    ? 'var(--q-weakening)'
+                    : 'var(--q-lagging)';
+
+            return `
+              <button type="button" class="mcap-card ${isLeader ? 'is-leader' : ''} ${isSel ? 'is-selected' : ''}" data-mcap-id="${e.id}" title="Focus ${e.id} vs ${mcapBench} on the RRG">
+                <div class="mcap-card-top">
+                  <div style="min-width:0;">
+                    <div class="mcap-name-row">
+                      <span style="width:8px;height:8px;border-radius:50%;background:${e.meta.color};flex-shrink:0;"></span>
+                      <span class="mcap-name">${e.id}</span>
+                    </div>
+                    <div class="mcap-tier">${e.tier.label}</div>
+                  </div>
+                  <span class="mcap-rank-badge mono ${isLeader ? 'rank-1' : ''}">#${e.capRank}${isLeader ? ' TOP' : ''}</span>
+                </div>
+
+                <div class="mcap-mid-row">
+                  <span class="pill pill-${e.pt.quadrant}" style="font-size:9.5px;padding:1.5px 7px;">${e.pt.quadrant}</span>
+                  <span class="mono" style="font-size:11px;font-weight:700;color:#fff;">
+                    R:${e.pt.rsRatio.toFixed(1)} <span style="color:var(--text-secondary);font-weight:500;">M:${e.pt.rsMomentum.toFixed(1)}</span>
+                  </span>
+                </div>
+
+                <div class="mcap-bar-track">
+                  <div class="mcap-bar-fill" style="width:${barPct}%;background:${barColor};"></div>
+                </div>
+
+                <div class="mcap-foot-row mono">
+                  <span class="${e.pt.emaAbove ? 'text-pos' : 'text-neg'}" style="font-weight:600;">10E ${formatSigned(e.pt.emaDist, 1, '%')}</span>
+                  <span>1W <strong class="${retCls(e.pt.ret1W)}">${formatSigned(e.pt.ret1W, 1, '%')}</strong></span>
+                  <span>1M <strong class="${retCls(e.pt.ret1M)}">${formatSigned(e.pt.ret1M, 1, '%')}</strong></span>
+                </div>
+              </button>
+            `;
+          })
+          .join('');
+
+        grid.querySelectorAll('.mcap-card[data-mcap-id]').forEach((card) => {
+          card.addEventListener('click', () => {
+            const id = card.getAttribute('data-mcap-id');
+            if (hasN500 && state.benchmark !== BENCHMARK_SECONDARY) {
+              state.benchmark = BENCHMARK_SECONDARY;
+              showToast('Switched benchmark to NIFTY 500 to compare all Market-Cap tiers.', 'info');
+            }
+            state.activeCategory = 'mcap';
+            state.activeQuadrantFilter = null;
+            state.selectedSector = id;
+            MARKET_CAP_IDS.forEach((cid) => state.visibleSectors.add(cid));
+            renderAll();
+          });
+        });
+      }
+
       function renderCategoryCounts() {
         const model = getCurrentModel();
+        let mcap = 0;
         let core = 0;
         let theme = 0;
-        let broad = 0;
+        let riskoff = 0;
         model.sectorIds.forEach((id) => {
           const cat = getSeriesMeta(id).category;
-          if (cat === 'core') core++;
-          else if (cat === 'broad') broad++;
+          if (cat === 'mcap') mcap++;
+          else if (cat === 'core') core++;
+          else if (cat === 'riskoff') riskoff++;
           else theme++;
         });
         document.getElementById('cat-count-all').textContent = model.sectorIds.length;
+        document.getElementById('cat-count-mcap').textContent = mcap;
         document.getElementById('cat-count-core').textContent = core;
         document.getElementById('cat-count-theme').textContent = theme;
-        document.getElementById('cat-count-broad').textContent = broad;
+        document.getElementById('cat-count-riskoff').textContent = riskoff;
 
         document.querySelectorAll('.cat-pill').forEach((btn) => {
           btn.classList.toggle('active', btn.getAttribute('data-category') === state.activeCategory);
@@ -4137,6 +4482,7 @@ jobs:
 
       function renderAll() {
         syncControlsUI();
+        renderMarketCapStrip();
         renderCategoryCounts();
         renderQuadrantKPIs();
         renderRRGChart();
@@ -4234,9 +4580,28 @@ jobs:
         // Category Filter Pills
         document.querySelectorAll('.cat-pill').forEach((btn) => {
           btn.addEventListener('click', () => {
-            state.activeCategory = btn.getAttribute('data-category');
+            const cat = btn.getAttribute('data-category');
+            state.activeCategory = cat;
+            // Auto-switch to NIFTY 500 when opening Market Cap view so NIFTY 50 plots alongside N100/Next50/Mid150/Small250
+            if (cat === 'mcap' && state.rawDataset && state.rawDataset.benchmarks.includes(BENCHMARK_SECONDARY) && state.benchmark !== BENCHMARK_SECONDARY) {
+              state.benchmark = BENCHMARK_SECONDARY;
+              showToast('Switched benchmark to NIFTY 500 so NIFTY 50 plots alongside Mid & Smallcaps.', 'info');
+            }
             renderAll();
           });
+        });
+
+        // Quick CTA in Market-Cap Strength Strip: Plot Cap Rotation on RRG
+        document.getElementById('btn-plot-mcap').addEventListener('click', () => {
+          if (state.rawDataset && state.rawDataset.benchmarks.includes(BENCHMARK_SECONDARY)) {
+            state.benchmark = BENCHMARK_SECONDARY;
+          }
+          state.activeCategory = 'mcap';
+          state.activeQuadrantFilter = null;
+          state.dimUnfocused = false;
+          MARKET_CAP_IDS.forEach((cid) => state.visibleSectors.add(cid));
+          renderAll();
+          document.getElementById('rrg-stage').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
 
         // Search Inputs & Clarity Toggles
@@ -4451,7 +4816,7 @@ jobs:
           e.preventDefault();
           e.stopPropagation();
           downloadFile(FETCH_EOD_PY, 'fetch_eod.py', 'text/x-python');
-          showToast('Downloaded fetch_eod.py (28 active tickers).', 'success');
+          showToast('Downloaded fetch_eod.py (30 active tickers).', 'success');
         });
         document.getElementById('btn-copy-yml').addEventListener('click', (e) => {
           e.preventDefault();
@@ -4520,7 +4885,7 @@ jobs:
             lines.push([demo.dates[i], ...cols.map((c) => (demo.series[c][i] === null ? '' : demo.series[c][i]))].join(','));
           }
           downloadFile(lines.join('\n'), 'eod_data.csv', 'text/csv');
-          showToast('Downloaded 28-column eod_data.csv template.', 'success');
+          showToast('Downloaded 30-column eod_data.csv template.', 'success');
         });
 
         // Reset to Demo Data
