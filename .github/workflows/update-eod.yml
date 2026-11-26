@@ -2,9 +2,9 @@ name: Update NSE Sector Data (Pre-Close & EOD)
 
 on:
   schedule:
-    # 2:45 PM IST (09:15 UTC) — Pre-Close snapshot ready by ~2:50-3:00 PM IST
+    # 2:45 PM IST (09:15 UTC) - pre-close snapshot
     - cron: '15 9 * * 1-5'
-    # 4:15 PM IST (10:45 UTC) — Final official NSE closing prices
+    # 4:15 PM IST (10:45 UTC) - final official NSE closing prices
     - cron: '45 10 * * 1-5'
   workflow_dispatch:
 
@@ -31,6 +31,9 @@ jobs:
         run: pip install yfinance pandas
 
       - name: Fetch NSE prices
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python fetch_eod.py
 
       - name: Commit and push if updated
