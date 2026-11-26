@@ -1503,16 +1503,21 @@
         '        above_mcap = sum(1 for c in mcap_cols if pd.notna(latest[c]) and latest[c] > ema10[c])',
         '        vix_val = latest.get("INDIA VIX", float("nan"))',
         '        vix_str = f"{vix_val:.2f}" if pd.notna(vix_val) else "N/A"',
-        '        # Top Market Cap by 20D return',
         '        ret20 = ((closes.iloc[-1] / closes.iloc[-21]) - 1) * 100 if len(closes) > 21 else pd.Series(dtype=float)',
-        '        top_mcap = max(mcap_cols, key=lambda c: ret20.get(c, -999)) if mcap_cols else "N/A"',
+        '        top_mcap = max(mcap_cols, key=lambda c: float(ret20[c]) if c in ret20 and pd.notna(ret20[c]) else -999.0) if mcap_cols else "N/A"',
+        '        top_mcap_ret = float(ret20[top_mcap]) if top_mcap in ret20 and pd.notna(ret20[top_mcap]) else 0.0',
+        '        skip_cols = set(mcap_cols + ["NIFTY 500", "INDIA VIX", "GOLD ETF", "SILVER ETF"])',
+        '        sec_cols = [c for c in closes.columns if c not in skip_cols and c in ret20 and pd.notna(ret20[c])]',
+        '        top_secs = sorted(sec_cols, key=lambda c: float(ret20[c]), reverse=True)[:3]',
+        '        top_sec_str = ", ".join(f"{c.replace(\'NIFTY \', \'\')} ({ret20[c]:+.1f}%)" for c in top_secs) if top_secs else "N/A"',
         '        regime = "GREEN (TRADE)" if above_mcap >= 4 and (pd.isna(vix_val) or vix_val < 20) else ("RED (NO-TRADE)" if above_mcap <= 1 or (pd.notna(vix_val) and vix_val >= 22) else "YELLOW (SELECTIVE)")',
         '        n50_chg = ((latest["NIFTY 50"] / prev["NIFTY 50"]) - 1) * 100 if prev["NIFTY 50"] else 0.0',
         '        msg = (',
         '            f"NSE Rotation ({meta[\'status\']}) - {meta[\'updated_ist\']}\\n"',
         '            f"Regime: {regime} | Cap >10EMA: {above_mcap}/{len(mcap_cols)}\\n"',
         '            f"NIFTY 50: {latest[\'NIFTY 50\']:.2f} ({n50_chg:+.2f}%) | India VIX: {vix_str}\\n"',
-        '            f"#1 Cap (1M): {top_mcap} ({ret20.get(top_mcap, 0):+.2f}%)"',
+        '            f"#1 Cap (1M): {top_mcap} ({top_mcap_ret:+.2f}%)\\n"',
+        '            f"Top Sectors (1M): {top_sec_str}"',
         '        )',
         '        url = f"https://api.telegram.org/bot{token}/sendMessage"',
         '        payload = json.dumps({"chat_id": chat_id, "text": msg}).encode("utf-8")',
@@ -1536,10 +1541,10 @@
         '    closes.index.name = "Date"',
         '    closes = closes[~closes.index.duplicated(keep="last")].sort_index()',
         '',
-        '    active_ticker_map = {t: name for t, name in TICKERS.items() if name in closes.columns and closes[name].notna().any()}',
+        '    active_ticker_map = {t: name for t, name in TICKERS.items() if name in closes.columns and closes[name].dropna().shape[0] >= 20}',
         '',
         '    for col_name, fb_ticker in FALLBACK_TICKERS.items():',
-        '        if col_name not in closes.columns or closes[col_name].isna().all():',
+        '        if col_name not in closes.columns or closes[col_name].dropna().shape[0] < 20:',
         '            fb = yf.download(fb_ticker, period="2y", interval="1d", auto_adjust=True, progress=False)',
         '            if not fb.empty and "Close" in fb:',
         '                series = fb["Close"]',
@@ -1654,7 +1659,7 @@
 
       var state = {
         rawDates: [],
-        rawSeries: {},       // colName -> Float64Array / Array of number|NaN
+        rawSeries: {},       // colName -> Array of number|NaN
         meta: null,
         sourceMode: 'demo',  // 'live' | 'demo' | 'upload'
         benchmark: 'NIFTY 50',
@@ -1742,7 +1747,6 @@
           'NIFTY CONSUMPTION': 125, 'NIFTY DIGITAL': 86, 'GOLD ETF': 64, 'SILVER ETF': 88
         };
 
-        // Generate NIFTY 50 base walk
         var rand0 = rng(202611);
         var n50 = [];
         var p0 = basePrices['NIFTY 50'];
@@ -1754,7 +1758,6 @@
         }
         series['NIFTY 50'] = n50;
 
-        // Generate India VIX mean-reverting around 14.5
         var randV = rng(9911);
         var vix = [];
         var pv = 14.4;
@@ -1765,7 +1768,6 @@
         }
         series['INDIA VIX'] = vix;
 
-        // Generate each remaining symbol with distinct rotational phase
         UNIVERSE.forEach(function (u, idx) {
           if (u.key === 'NIFTY 50' || u.key === 'INDIA VIX') return;
           var r = rng(4001 + idx * 173);
@@ -1796,7 +1798,8 @@
          5. CSV PARSER & DATA LOADING
          ===================================================================== */
       function parseCSVText(text) {
-        var lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(function (l) { return l.trim().length > 0; });
+        var cleanText = String(text || '').replace(/^\uFEFF/, '');
+        var lines = cleanText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(function (l) { return l.trim().length > 0; });
         if (lines.length < 35) throw new Error('CSV needs at least 35 rows of historical prices.');
 
         var headers = lines[0].split(',').map(function (h) { return h.trim().replace(/^"|"$/g, ''); });
@@ -1823,7 +1826,6 @@
           throw new Error('CSV must contain a "NIFTY 50" or "NIFTY 500" column.');
         }
 
-        // Register any extra unknown columns automatically
         cols.forEach(function (c, idx) {
           if (!UNIVERSE_MAP[c]) {
             var extra = {
@@ -1843,6 +1845,7 @@
       }
 
       function applyDataset(dataset, mode, meta) {
+        if (state.playing) togglePlay();
         state.rawDates = dataset.dates;
         state.rawSeries = dataset.series;
         state.sourceMode = mode;
@@ -1850,7 +1853,6 @@
         state.modelCache = {};
         state.frameOffset = 0;
 
-        // Ensure valid benchmark
         if (!state.rawSeries[state.benchmark]) {
           state.benchmark = state.rawSeries['NIFTY 50'] ? 'NIFTY 50' : 'NIFTY 500';
         }
@@ -1946,8 +1948,8 @@
         var wIndices = [];
         function weekKey(dtStr) {
           var d = new Date(dtStr + 'T00:00:00Z');
-          var day = (d.getUTCDay() + 6) % 7; // Mon=0
-          d.setUTCDate(d.getUTCDate() - day + 4); // Friday anchor
+          var day = (d.getUTCDay() + 6) % 7;
+          d.setUTCDate(d.getUTCDate() - day + 4);
           return d.toISOString().slice(0, 10);
         }
         var curKey = null;
@@ -2037,7 +2039,6 @@
           var meta = UNIVERSE_MAP[key];
           if (!meta || meta.isVolatility) return;
           if (key === benchmarkKey) return;
-          // Exclude NIFTY 500 when benchmark is NIFTY 50 unless desired; always allow NIFTY 50 when benchmark is NIFTY 500
           if (key === 'NIFTY 500') return;
 
           var prices = data.series[key];
@@ -2062,7 +2063,6 @@
           var rsm = emaArray(rsmRaw, 3);
           var ema10 = emaArray(prices, 10);
 
-          // Daily valid count & listing date from raw daily data
           var rawArr = state.rawSeries[key] || [];
           var validDays = 0;
           var firstDate = '--';
@@ -2132,8 +2132,6 @@
         var r1w = pctReturn(item.prices, idx, isW ? 1 : 5);
         var r1m = pctReturn(item.prices, idx, isW ? 4 : 21);
         var r3m = pctReturn(item.prices, idx, isW ? 13 : 63);
-
-        // Composite strength score for ranking
         var score = (rsr - 100) * 1.3 + (rsm - 100) * 0.9;
 
         return {
@@ -2166,219 +2164,213 @@
       function renderTradeRegime() {
         var dailyModel = computeRRGModel(state.benchmark, 'daily');
         var weeklyModel = computeRRGModel(state.benchmark, 'weekly');
-        var mcapModel = state.rawSeries['NIFTY 500']
-          ? computeRRGModel('NIFTY 500', 'daily')
-          : dailyModel;
-        if (!dailyModel) return;
+        if (!dailyModel || !dailyModel.dates.length) return;
 
-        var dIdx = state.timeframe === 'daily' ? getActiveIndex(dailyModel) : dailyModel.dates.length - 1;
-        var wIdx = state.timeframe === 'weekly' ? getActiveIndex(weeklyModel) : weeklyModel.dates.length - 1;
+        var dIdx, wIdx;
+        if (state.timeframe === 'weekly' && weeklyModel && weeklyModel.dates.length) {
+          wIdx = getActiveIndex(weeklyModel);
+          var wDate = weeklyModel.dates[wIdx];
+          var matchedD = dailyModel.dates.indexOf(wDate);
+          dIdx = matchedD >= 0 ? matchedD : dailyModel.dates.length - 1;
+        } else {
+          dIdx = getActiveIndex(dailyModel);
+          var dDate = dailyModel.dates[dIdx];
+          wIdx = weeklyModel && weeklyModel.dates.length ? weeklyModel.dates.length - 1 : 0;
+          if (weeklyModel && weeklyModel.dates.length) {
+            for (var wi = weeklyModel.dates.length - 1; wi >= 0; wi--) {
+              if (weeklyModel.dates[wi] <= dDate) { wIdx = wi; break; }
+            }
+          }
+        }
 
-        // Check 1: Broad 10-EMA Trend (Market Cap tiers + Core Sectors)
-        var mcapAbove = 0, mcapTotal = 0;
+        // Check 1: Broad 10-EMA Trend (Market-Cap tiers + Core Sectors)
+        var mcapTotal = 0, mcapAbove = 0;
         MCAP_KEYS.forEach(function (k) {
           var arr = state.rawSeries[k];
-          if (!arr) return;
-          var e = emaArray(arr, 10);
-          var p = arr[dIdx], ev = e[dIdx];
-          if (isFinite(p) && isFinite(ev)) {
+          if (!arr || !isFinite(arr[dIdx])) return;
+          var ema = emaArray(arr, 10);
+          if (isFinite(ema[dIdx])) {
             mcapTotal++;
-            if (p >= ev) mcapAbove++;
+            if (arr[dIdx] >= ema[dIdx]) mcapAbove++;
           }
         });
-        var coreAbove = 0, coreTotal = 0;
-        Object.keys(dailyModel.items).forEach(function (k) {
-          var it = dailyModel.items[k];
-          if (it.meta.cat !== 'core') return;
-          var s = snapshotItem(it, dIdx, 'daily');
-          if (!s) return;
-          coreTotal++;
-          if (s.aboveEma) coreAbove++;
-        });
-        var coreRatio = coreTotal ? coreAbove / coreTotal : 0;
-        var c1Pts = (mcapAbove >= 3 && coreRatio >= 0.55) ? 2 : ((mcapAbove >= 2 || coreRatio >= 0.35) ? 1 : 0);
 
-        // Check 2: Risk-On vs Defensive Leadership
-        var cycLead = 0, defLead = 0;
-        Object.keys(dailyModel.items).forEach(function (k) {
-          var s = snapshotItem(dailyModel.items[k], dIdx, 'daily');
-          if (!s) return;
-          if (s.quadrant === 'Leading' || s.quadrant === 'Improving') {
-            if (CYCLICAL_KEYS.indexOf(k) !== -1) cycLead++;
-            if (DEFENSIVE_KEYS.indexOf(k) !== -1 && s.quadrant === 'Leading') defLead++;
-          }
-        });
-        var c2Pts = (cycLead >= 3 && defLead <= 1) ? 2 : (cycLead >= 1 && defLead <= 2 ? 1 : 0);
+        var dailySnaps = Object.keys(dailyModel.items).map(function (k) {
+          return snapshotItem(dailyModel.items[k], dIdx, 'daily');
+        }).filter(Boolean);
 
-        // Check 3: RRG Spread (Sideways Chop Detector)
-        var dists = [];
-        Object.keys(dailyModel.items).forEach(function (k) {
-          var s = snapshotItem(dailyModel.items[k], dIdx, 'daily');
-          if (!s) return;
-          dists.push(Math.hypot(s.rsr - 100, s.rsm - 100));
-        });
-        var avgSpread = dists.length ? dists.reduce(function (a, b) { return a + b; }, 0) / dists.length : 0;
-        var c3Pts = avgSpread >= 1.35 ? 2 : (avgSpread >= 0.9 ? 1 : 0);
+        var coreSnaps = dailySnaps.filter(function (s) { return s.meta.cat === 'core'; });
+        var coreAbove = coreSnaps.filter(function (s) { return s.aboveEma; }).length;
+        var coreTotal = coreSnaps.length;
 
-        // Check 4: Daily x Weekly Sync
-        var synced = 0, dailyLeaders = 0;
-        Object.keys(dailyModel.items).forEach(function (k) {
-          var sd = snapshotItem(dailyModel.items[k], dIdx, 'daily');
-          var sw = weeklyModel && weeklyModel.items[k] ? snapshotItem(weeklyModel.items[k], wIdx, 'weekly') : null;
-          if (!sd || !sw) return;
-          if (sd.quadrant === 'Leading' || sd.quadrant === 'Improving') {
-            dailyLeaders++;
-            if (sw.quadrant === 'Leading' || sw.quadrant === 'Improving' || sw.aboveEma) synced++;
-          }
+        var c1Score = (mcapAbove >= 4 && coreAbove >= Math.ceil(coreTotal * 0.55)) ? 2
+          : (mcapAbove >= 2 || coreAbove >= Math.ceil(coreTotal * 0.4)) ? 1 : 0;
+        var c1Tag = c1Score === 2 ? 'pass' : (c1Score === 1 ? 'warn' : 'fail');
+        var c1Desc = mcapAbove + '/' + mcapTotal + ' Cap tiers & ' + coreAbove + '/' + coreTotal + ' Core Sectors above 10-EMA.';
+
+        // Check 2: Risk-On Leadership vs Defensive Takeover
+        var cycStrong = dailySnaps.filter(function (s) {
+          return CYCLICAL_KEYS.indexOf(s.key) !== -1 && (s.quadrant === 'Leading' || s.quadrant === 'Improving');
+        }).length;
+        var defLead = dailySnaps.filter(function (s) {
+          return DEFENSIVE_KEYS.indexOf(s.key) !== -1 && s.quadrant === 'Leading';
+        }).length;
+
+        var c2Score = (cycStrong >= 4 && defLead <= 1) ? 2 : (cycStrong >= 2 && defLead <= 2) ? 1 : 0;
+        var c2Tag = c2Score === 2 ? 'pass' : (c2Score === 1 ? 'warn' : 'fail');
+        var c2Desc = cycStrong + ' cyclical/growth leaders vs ' + defLead + ' risk-off (Gold/Silver/FMCG/Pharma) leading.';
+
+        // Check 3: RRG Trend Spread (Chop Filter)
+        var spreadSum = 0;
+        dailySnaps.forEach(function (s) {
+          spreadSum += Math.hypot(s.rsr - 100, s.rsm - 100);
         });
-        var syncRatio = dailyLeaders ? synced / dailyLeaders : 0;
-        var c4Pts = (dailyLeaders >= 2 && syncRatio >= 0.55) ? 2 : (syncRatio >= 0.3 ? 1 : 0);
+        var avgSpread = dailySnaps.length ? spreadSum / dailySnaps.length : 0;
+        var c3Score = avgSpread >= 1.15 ? 2 : (avgSpread >= 0.70 ? 1 : 0);
+        var c3Tag = c3Score === 2 ? 'pass' : (c3Score === 1 ? 'warn' : 'fail');
+        var c3Desc = 'Avg RRG spread: ' + avgSpread.toFixed(2) + (c3Score === 0 ? ' (tight sideways chop near 100).' : (c3Score === 1 ? ' (moderate rotation dispersion).' : ' (clear directional rotation).'));
+
+        // Check 4: Daily x Weekly Timeframe Sync
+        var dailyTop = dailySnaps.filter(function (s) {
+          return s.quadrant === 'Leading' || s.quadrant === 'Improving';
+        }).sort(function (a, b) { return b.score - a.score; }).slice(0, 6);
+
+        var synced = 0;
+        if (weeklyModel && weeklyModel.dates.length) {
+          dailyTop.forEach(function (ds) {
+            var wiItem = weeklyModel.items[ds.key];
+            if (!wiItem) return;
+            var ws = snapshotItem(wiItem, wIdx, 'weekly');
+            if (ws && (ws.quadrant === 'Leading' || ws.quadrant === 'Improving' || ws.aboveEma)) synced++;
+          });
+        }
+        var c4Score = (dailyTop.length && synced >= Math.ceil(dailyTop.length * 0.65)) ? 2
+          : (synced >= 2 ? 1 : 0);
+        var c4Tag = c4Score === 2 ? 'pass' : (c4Score === 1 ? 'warn' : 'fail');
+        var c4Desc = synced + '/' + dailyTop.length + ' top Daily leaders confirmed on Weekly Fri trend.';
+
+        var totalScore = c1Score + c2Score + c3Score + c4Score;
 
         // India VIX Guard
         var vixArr = state.rawSeries['INDIA VIX'];
-        var vixVal = vixArr && isFinite(vixArr[dIdx]) ? vixArr[dIdx] : NaN;
-        var vixPrev = vixArr && dIdx > 0 && isFinite(vixArr[dIdx - 1]) ? vixArr[dIdx - 1] : NaN;
-        var vixChgPct = (isFinite(vixVal) && isFinite(vixPrev) && vixPrev > 0) ? ((vixVal / vixPrev) - 1) * 100 : 0;
+        var vixVal = (vixArr && isFinite(vixArr[dIdx])) ? vixArr[dIdx] : NaN;
+        var vixPrev = (vixArr && dIdx > 0 && isFinite(vixArr[dIdx - 1])) ? vixArr[dIdx - 1] : NaN;
+        var vixChg = (isFinite(vixVal) && isFinite(vixPrev) && vixPrev > 0) ? ((vixVal / vixPrev) - 1) * 100 : NaN;
 
+        var vixState = 'calm';
         var vixPill = document.getElementById('vix-pill');
-        var vixPenalty = 0;
-        var vixFearOverride = false;
         if (isFinite(vixVal)) {
-          var vLabel = 'INDIA VIX: ' + vixVal.toFixed(2) + ' (' + (vixChgPct >= 0 ? '+' : '') + vixChgPct.toFixed(1) + '%)';
-          vixPill.className = 'vix-pill';
-          if (vixVal >= 22 || vixChgPct >= 15) {
-            vixPill.classList.add('fear');
-            vixPill.textContent = vLabel + ' \u00b7 FEAR';
-            vixFearOverride = true;
-            vixPenalty = 2;
-          } else if (vixVal >= 18 || vixChgPct >= 10) {
-            vixPill.classList.add('caution');
-            vixPill.textContent = vLabel + ' \u00b7 ELEVATED';
-            vixPenalty = 1;
-          } else {
-            vixPill.classList.add('calm');
-            vixPill.textContent = vLabel + ' \u00b7 CALM';
-          }
+          if (vixVal >= 22 || (isFinite(vixChg) && vixChg >= 15)) vixState = 'fear';
+          else if (vixVal >= 18 || (isFinite(vixChg) && vixChg >= 10)) vixState = 'caution';
+          vixPill.className = 'vix-pill ' + vixState;
+          vixPill.textContent = 'INDIA VIX: ' + vixVal.toFixed(2) + (isFinite(vixChg) ? ' (' + fmtPct(vixChg) + ')' : '') + ' \u00b7 ' + (vixState === 'fear' ? 'Fear Spike' : (vixState === 'caution' ? 'Elevated' : 'Calm'));
         } else {
           vixPill.className = 'vix-pill';
           vixPill.textContent = 'INDIA VIX: N/A';
         }
 
-        var totalPts = Math.max(0, c1Pts + c2Pts + c3Pts + c4Pts - vixPenalty);
-        var card = document.getElementById('regime-card');
-        var badge = document.getElementById('regime-badge');
-        var scoreEl = document.getElementById('regime-score');
-        var advice = document.getElementById('regime-advice');
-
-        card.className = 'regime-card';
-        if (vixFearOverride || totalPts <= 2 || c1Pts === 0) {
-          card.classList.add('zone-red');
-          badge.textContent = '\u25cf NO-TRADE ZONE';
-          advice.textContent = vixFearOverride
-            ? 'India VIX spike detected. Stay in cash and protect capital until volatility cools.'
-            : 'Broad trend & participation are weak. Stay in cash; avoid forcing swing breakouts.';
-        } else if (totalPts >= 6) {
-          card.classList.add('zone-green');
-          badge.textContent = '\u25cf TRADE ZONE';
-          advice.textContent = 'Supportive breadth & momentum. Focus on Leading/Improving sectors matching the #1 Market-Cap tier.';
+        // Final Traffic-Light Verdict
+        var zoneCls, badgeText, adviceText;
+        if (vixState === 'fear') {
+          zoneCls = 'zone-red';
+          badgeText = 'NO-TRADE ZONE';
+          adviceText = 'India VIX fear spike override — protect capital, avoid fresh swing longs, and wait for volatility to cool.';
+        } else if (totalScore >= 6 && vixState === 'calm') {
+          zoneCls = 'zone-green';
+          badgeText = 'TRADE ZONE';
+          adviceText = 'Broad trend & rotation aligned. Focus on top-ranked Leading/Improving sectors matching the #1 Market-Cap tier.';
+        } else if (totalScore >= 3) {
+          zoneCls = 'zone-amber';
+          badgeText = 'SELECTIVE ZONE';
+          adviceText = (vixState === 'caution' ? 'Elevated VIX — ' : 'Mixed breadth — ') + 'reduce position size and stick strictly to liquid leaders above their 10-EMA.';
         } else {
-          card.classList.add('zone-amber');
-          badge.textContent = '\u25cf SELECTIVE ZONE';
-          advice.textContent = 'Mixed participation. Use reduced size and stick strictly to leaders holding above their 10-EMA.';
+          zoneCls = 'zone-red';
+          badgeText = 'NO-TRADE ZONE';
+          adviceText = 'Weak breadth or choppy rotation. Stay mostly in cash until leaders reclaim their 10-EMA and Improving trails curl up.';
         }
-        scoreEl.textContent = 'Score ' + totalPts + ' / 8';
 
-        var checks = [
-          {
-            title: '1. Broad 10-EMA Trend',
-            pts: c1Pts,
-            desc: 'Cap tiers >10E: ' + mcapAbove + '/' + mcapTotal + ' \u00b7 Core Sectors >10E: ' + coreAbove + '/' + coreTotal
-          },
-          {
-            title: '2. Risk-On Leadership',
-            pts: c2Pts,
-            desc: 'Cyclicals Leading/Imp: ' + cycLead + ' \u00b7 Defensives Leading: ' + defLead
-          },
-          {
-            title: '3. RRG Trend Spread',
-            pts: c3Pts,
-            desc: 'Avg distance from 100: ' + avgSpread.toFixed(2) + (avgSpread < 0.9 ? ' (Tight Chop)' : ' (Clean Separation)')
-          },
-          {
-            title: '4. Daily \u00d7 Weekly Sync',
-            pts: c4Pts,
-            desc: Math.round(syncRatio * 100) + '% of Daily leaders confirmed by Weekly structure'
-          }
-        ];
+        var card = document.getElementById('regime-card');
+        card.className = 'regime-card ' + zoneCls;
+        document.getElementById('regime-badge').textContent = badgeText;
+        document.getElementById('regime-score').textContent = 'Score ' + totalScore + ' / 8';
+        document.getElementById('regime-advice').textContent = adviceText;
 
         var checksEl = document.getElementById('regime-checks');
-        checksEl.className = 'regime-checks' + (state.showChecks ? '' : ' hidden');
+        checksEl.classList.toggle('hidden', !state.showChecks);
         document.getElementById('btn-toggle-checks').textContent = state.showChecks ? 'Hide Checks' : 'Show Checks';
 
+        var checks = [
+          { title: '1. Broad 10-EMA Trend', tag: c1Tag, score: c1Score, desc: c1Desc },
+          { title: '2. Risk-On Leadership', tag: c2Tag, score: c2Score, desc: c2Desc },
+          { title: '3. RRG Trend Spread',   tag: c3Tag, score: c3Score, desc: c3Desc },
+          { title: '4. Daily \u00d7 Weekly Sync', tag: c4Tag, score: c4Score, desc: c4Desc }
+        ];
         checksEl.innerHTML = checks.map(function (c) {
-          var cls = c.pts === 2 ? 'pass' : (c.pts === 1 ? 'warn' : 'fail');
-          var lbl = c.pts === 2 ? 'PASS' : (c.pts === 1 ? 'MIXED' : 'FAIL');
+          var lbl = c.tag === 'pass' ? 'PASS (2/2)' : (c.tag === 'warn' ? 'MIXED (1/2)' : 'FAIL (0/2)');
           return '<div class="check-item">' +
-            '<div class="check-head"><span>' + c.title + '</span><span class="check-tag ' + cls + '">' + lbl + '</span></div>' +
+            '<div class="check-head"><span>' + c.title + '</span><span class="check-tag ' + c.tag + '">' + lbl + '</span></div>' +
             '<div class="check-desc">' + c.desc + '</div>' +
-            '</div>';
+          '</div>';
         }).join('');
       }
 
       /* =====================================================================
-         8. MARKET-CAP STRENGTH STRIP (ALWAYS VS NIFTY 500 WHEN AVAILABLE)
+         8. MARKET-CAP STRENGTH REGIME STRIP
          ===================================================================== */
       function renderMcapStrip() {
+        var benchKey = state.rawSeries['NIFTY 500'] ? 'NIFTY 500' : state.benchmark;
+        var mcapModel = computeRRGModel(benchKey, state.timeframe);
         var grid = document.getElementById('mcap-grid');
         var hint = document.getElementById('mcap-focus-hint');
-        var bench = state.rawSeries['NIFTY 500'] ? 'NIFTY 500' : 'NIFTY 50';
-        var model = computeRRGModel(bench, state.timeframe);
-        if (!model) { grid.innerHTML = ''; return; }
-
-        var idx = getActiveIndex(model);
-        var list = [];
+        if (!mcapModel || !mcapModel.dates.length) {
+          grid.innerHTML = '';
+          return;
+        }
+        var idx = getActiveIndex(mcapModel);
+        var snaps = [];
         MCAP_KEYS.forEach(function (k) {
-          var it = model.items[k];
-          if (!it) return;
-          var snap = snapshotItem(it, idx, state.timeframe);
-          if (snap) list.push(snap);
+          if (mcapModel.items[k]) {
+            var s = snapshotItem(mcapModel.items[k], idx, state.timeframe);
+            if (s) snaps.push(s);
+          }
         });
+        snaps.sort(function (a, b) { return b.score - a.score; });
 
-        list.sort(function (a, b) { return b.score - a.score; });
-        if (list.length) {
-          hint.textContent = 'Top Cap Focus: ' + list[0].key + ' (' + list[0].quadrant + ')';
-        } else {
-          hint.textContent = 'Add NIFTY 500 to compare all 5 tiers.';
+        if (!snaps.length) {
+          grid.innerHTML = '<div class="section-sub">Load NIFTY 500 &amp; market-cap series to rank tiers.</div>';
+          hint.textContent = '';
+          return;
         }
 
-        grid.innerHTML = list.map(function (s, i) {
+        var top = snaps[0];
+        hint.textContent = 'Focus Tier: ' + top.key + ' (' + top.quadrant + ' \u00b7 ' + (top.aboveEma ? 'Above 10-EMA' : 'Below 10-EMA') + ')';
+
+        grid.innerHTML = snaps.map(function (s, i) {
           var isTop = i === 0;
-          var emaCls = s.aboveEma ? 'pos' : 'neg';
-          var r1wCls = isFinite(s.r1w) ? (s.r1w >= 0 ? 'pos' : 'neg') : 'neu';
-          var r1mCls = isFinite(s.r1m) ? (s.r1m >= 0 ? 'pos' : 'neg') : 'neu';
-          return '<button type="button" class="mcap-tile' + (isTop ? ' top-tier' : '') + '" data-mcap-key="' + s.key + '">' +
+          var emaTxt = isFinite(s.emaDist) ? ('10E ' + fmtPct(s.emaDist)) : '10E --';
+          return '<button type="button" class="mcap-tile ' + (isTop ? 'top-tier' : '') + '" data-mcap="' + s.key + '">' +
             '<div class="mcap-row1">' +
               '<span class="mcap-name">' + s.key.replace('NIFTY ', '') + '</span>' +
               '<span class="rank-badge">' + (isTop ? '#1 TOP' : '#' + (i + 1)) + '</span>' +
             '</div>' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">' +
               '<span class="q-pill q-' + s.quadrant + '" style="font-size:10px;padding:1px 6px;">' + s.quadrant + '</span>' +
-              '<span class="' + emaCls + '" style="font-family:var(--mono);font-size:11px;font-weight:700;">10E ' + fmtPct(s.emaDist) + '</span>' +
+              '<span class="' + retCls(s.emaDist) + '" style="font-family:var(--mono);font-size:10px;font-weight:700;">' + emaTxt + '</span>' +
             '</div>' +
             '<div class="mcap-metrics">' +
-              '<span>RS-R ' + s.rsr.toFixed(1) + '</span>' +
-              '<span>RS-M ' + s.rsm.toFixed(1) + '</span>' +
+              '<span>RSR ' + s.rsr.toFixed(2) + '</span>' +
+              '<span>RSM ' + s.rsm.toFixed(2) + '</span>' +
             '</div>' +
             '<div class="mcap-returns">' +
-              '<span class="' + r1wCls + '">1W ' + fmtPct(s.r1w) + '</span>' +
-              '<span class="' + r1mCls + '">1M ' + fmtPct(s.r1m) + '</span>' +
+              '<span>1W <strong class="' + retCls(s.r1w) + '">' + fmtPct(s.r1w) + '</strong></span>' +
+              '<span>1M <strong class="' + retCls(s.r1m) + '">' + fmtPct(s.r1m) + '</strong></span>' +
             '</div>' +
           '</button>';
         }).join('');
 
-        grid.querySelectorAll('.mcap-tile').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var key = btn.getAttribute('data-mcap-key');
+        grid.querySelectorAll('.mcap-tile').forEach(function (tile) {
+          tile.addEventListener('click', function () {
+            var key = tile.getAttribute('data-mcap');
             if (state.rawSeries['NIFTY 500']) state.benchmark = 'NIFTY 500';
             state.category = 'mcap';
             state.quadrantFilter = null;
@@ -2390,58 +2382,60 @@
       }
 
       /* =====================================================================
-         9. FILTERING, KPI CARDS & FRESH CROSSOVERS
+         9. FRESH CROSSOVERS SCANNER STRIP
          ===================================================================== */
-      function getFilteredSnapshots(model, idx, ignoreQuadrant) {
-        var snaps = [];
-        var qSearch = state.search.trim().toLowerCase();
-
-        Object.keys(model.items).forEach(function (k) {
-          var it = model.items[k];
-          var snap = snapshotItem(it, idx, state.timeframe);
-          if (!snap) return;
-
-          if (state.category !== 'all' && it.meta.cat !== state.category) return;
-          if (!ignoreQuadrant && state.quadrantFilter && snap.quadrant !== state.quadrantFilter) return;
-
-          if (qSearch) {
-            var hay = (it.key + ' ' + it.meta.short + ' ' + it.meta.ticker + ' ' + (it.meta.constituents || []).join(' ')).toLowerCase();
-            if (hay.indexOf(qSearch) === -1) return;
-          }
-          snaps.push(snap);
-        });
-
-        snaps.sort(function (a, b) { return b.score - a.score; });
-        snaps.forEach(function (s, i) { s.rank = i + 1; });
-        return snaps;
-      }
-
-      function renderFreshCrossovers(allSnaps) {
+      function renderFreshCrossovers(allModelSnaps) {
         var lbl = document.getElementById('cross-label');
         var wrap = document.getElementById('cross-chips');
-        lbl.textContent = state.timeframe === 'weekly' ? 'Fresh Shifts (This Week):' : 'Fresh Shifts (Today):';
+        lbl.textContent = state.timeframe === 'weekly' ? 'Fresh Shifts This Week:' : 'Fresh Shifts Today:';
 
-        var shifted = allSnaps.filter(function (s) { return s.shifted; });
+        var shifted = allModelSnaps.filter(function (s) { return s.shifted; });
         if (!shifted.length) {
-          wrap.innerHTML = '<span class="section-sub">No quadrant crossovers on this bar.</span>';
+          wrap.innerHTML = '<span class="section-sub">No fresh quadrant crossovers on this bar.</span>';
           return;
         }
+
         wrap.innerHTML = shifted.map(function (s) {
           var isBull = s.quadrant === 'Leading' || s.quadrant === 'Improving';
           return '<button type="button" class="cross-chip ' + (isBull ? 'bull' : 'bear') + '" data-key="' + s.key + '">' +
             '<span style="width:7px;height:7px;border-radius:50%;background:' + s.meta.color + ';"></span>' +
             '<strong>' + s.meta.short + '</strong>' +
-            '<span style="color:var(--text-3);">' + s.prevQuadrant.slice(0, 4) + ' &rarr;</span>' +
+            '<span style="color:var(--text-3);">' + s.prevQuadrant + ' &rarr;</span>' +
             '<span style="color:' + QUADRANT_COLORS[s.quadrant] + ';font-weight:700;">' + s.quadrant + '</span>' +
           '</button>';
         }).join('');
 
-        wrap.querySelectorAll('.cross-chip').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            state.selectedKey = btn.getAttribute('data-key');
+        wrap.querySelectorAll('.cross-chip').forEach(function (chip) {
+          chip.addEventListener('click', function () {
+            var key = chip.getAttribute('data-key');
+            var meta = UNIVERSE_MAP[key];
+            if (state.category !== 'all' && meta && meta.cat !== state.category) state.category = 'all';
+            state.quadrantFilter = null;
+            state.selectedKey = key;
             renderAll();
           });
         });
+      }
+
+      /* =====================================================================
+         10. FILTERING, CATEGORY PILLS & QUADRANT KPI CARDS
+         ===================================================================== */
+      function getFilteredSnapshots(model, idx, ignoreQuadrant) {
+        var q = state.search.trim().toLowerCase();
+        var list = [];
+        Object.keys(model.items).forEach(function (k) {
+          var s = snapshotItem(model.items[k], idx, state.timeframe);
+          if (!s) return;
+          if (state.category !== 'all' && s.meta.cat !== state.category) return;
+          if (q) {
+            var hay = (s.key + ' ' + s.meta.short + ' ' + s.meta.ticker + ' ' + (s.meta.constituents || []).join(' ')).toLowerCase();
+            if (hay.indexOf(q) === -1) return;
+          }
+          if (!ignoreQuadrant && state.quadrantFilter && s.quadrant !== state.quadrantFilter) return;
+          list.push(s);
+        });
+        list.sort(function (a, b) { return b.score - a.score; });
+        return list;
       }
 
       function renderCategoryPills(model, idx) {
@@ -2454,24 +2448,25 @@
         });
 
         var defs = [
-          { id: 'all',   label: 'All' },
+          { id: 'all',   label: 'All Universe' },
           { id: 'mcap',  label: 'Market Cap' },
           { id: 'core',  label: 'Core Sectors' },
           { id: 'theme', label: 'Themes' },
           { id: 'broad', label: 'Risk-Off' }
         ];
-
-        var el = document.getElementById('cat-pills');
-        el.innerHTML = defs.map(function (d) {
-          return '<button type="button" class="cat-pill' + (state.category === d.id ? ' active' : '') + '" data-cat="' + d.id + '">' +
-            d.label + ' <span class="cat-count">' + counts[d.id] + '</span></button>';
+        var wrap = document.getElementById('cat-pills');
+        wrap.innerHTML = defs.map(function (d) {
+          return '<button type="button" class="cat-pill ' + (state.category === d.id ? 'active' : '') + '" data-cat="' + d.id + '">' +
+            '<span>' + d.label + '</span>' +
+            '<span class="cat-count">' + counts[d.id] + '</span>' +
+          '</button>';
         }).join('');
 
-        el.querySelectorAll('.cat-pill').forEach(function (btn) {
+        wrap.querySelectorAll('.cat-pill').forEach(function (btn) {
           btn.addEventListener('click', function () {
-            var c = btn.getAttribute('data-cat');
-            state.category = c;
-            if (c === 'mcap' && state.rawSeries['NIFTY 500']) {
+            var cat = btn.getAttribute('data-cat');
+            state.category = cat;
+            if (cat === 'mcap' && state.rawSeries['NIFTY 500']) {
               state.benchmark = 'NIFTY 500';
             }
             savePrefs();
@@ -2482,32 +2477,29 @@
 
       function renderKpiCards(catSnaps) {
         var total = catSnaps.length || 1;
-        var defs = [
-          { q: 'Leading',   sub: 'Outperforming + Rising Mom' },
-          { q: 'Weakening', sub: 'Outperforming + Cooling Mom' },
-          { q: 'Lagging',   sub: 'Underperforming + Weak Mom' },
-          { q: 'Improving', sub: 'Underperforming + Rising Mom' }
+        var quads = [
+          { id: 'Leading',   sub: 'Strong RS & Momentum', color: '#10b981' },
+          { id: 'Weakening', sub: 'Strong RS, Cooling',   color: '#f59e0b' },
+          { id: 'Lagging',   sub: 'Weak RS & Momentum',   color: '#ef4444' },
+          { id: 'Improving', sub: 'Weak RS, Turning Up',  color: '#6366f1' }
         ];
-
-        var grid = document.getElementById('kpi-grid');
-        grid.innerHTML = defs.map(function (d) {
-          var list = catSnaps.filter(function (s) { return s.quadrant === d.q; });
-          var pct = Math.round((list.length / total) * 100);
-          var activeCls = state.quadrantFilter === d.q ? ' active-q-' + d.q : '';
-          var chips = list.slice(0, 5).map(function (s) {
+        var wrap = document.getElementById('kpi-grid');
+        wrap.innerHTML = quads.map(function (q) {
+          var items = catSnaps.filter(function (s) { return s.quadrant === q.id; });
+          var pct = Math.round((items.length / total) * 100);
+          var chips = items.slice(0, 4).map(function (s) {
             return '<span class="mini-chip"><span style="width:6px;height:6px;border-radius:50%;background:' + s.meta.color + ';"></span>' + s.meta.short + '</span>';
-          }).join('') + (list.length > 5 ? '<span class="mini-chip">+' + (list.length - 5) + '</span>' : '');
-
-          return '<button type="button" class="kpi-card' + activeCls + '" data-q="' + d.q + '">' +
+          }).join('');
+          if (items.length > 4) chips += '<span class="mini-chip">+' + (items.length - 4) + '</span>';
+          var activeCls = state.quadrantFilter === q.id ? ('active-q-' + q.id) : '';
+          return '<button type="button" class="kpi-card ' + activeCls + '" data-quad="' + q.id + '">' +
             '<div class="kpi-top">' +
               '<div>' +
-                '<div class="kpi-name" style="color:' + QUADRANT_COLORS[d.q] + ';">' +
-                  '<span style="width:8px;height:8px;border-radius:50%;background:' + QUADRANT_COLORS[d.q] + ';"></span>' + d.q.toUpperCase() +
-                '</div>' +
-                '<div class="kpi-sub">' + d.sub + '</div>' +
+                '<div class="kpi-name" style="color:' + q.color + ';"><span style="width:8px;height:8px;border-radius:50%;background:' + q.color + ';"></span>' + q.id.toUpperCase() + '</div>' +
+                '<div class="kpi-sub">' + q.sub + '</div>' +
               '</div>' +
               '<div>' +
-                '<div class="kpi-num">' + list.length + '</div>' +
+                '<div class="kpi-num" style="color:' + q.color + ';">' + items.length + '</div>' +
                 '<div class="kpi-pct">' + pct + '% of view</div>' +
               '</div>' +
             '</div>' +
@@ -2515,9 +2507,9 @@
           '</button>';
         }).join('');
 
-        grid.querySelectorAll('.kpi-card').forEach(function (card) {
+        wrap.querySelectorAll('.kpi-card').forEach(function (card) {
           card.addEventListener('click', function () {
-            var q = card.getAttribute('data-q');
+            var q = card.getAttribute('data-quad');
             state.quadrantFilter = state.quadrantFilter === q ? null : q;
             renderAll();
           });
@@ -2525,124 +2517,194 @@
       }
 
       /* =====================================================================
-         10. SVG RELATIVE ROTATION GRAPH RENDERER
+         11. RRG SVG CHART & TOOLTIP
          ===================================================================== */
+      function showTooltip(snap, ev) {
+        if (!snap) return;
+        var tip = document.getElementById('rrg-tooltip');
+        var stage = document.getElementById('rrg-stage');
+        var rect = stage.getBoundingClientRect();
+
+        tip.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">' +
+            '<strong style="font-size:12px;">' + snap.key + '</strong>' +
+            '<span class="q-pill q-' + snap.quadrant + '" style="font-size:10px;padding:1px 6px;">' + snap.quadrant + '</span>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-family:var(--mono);font-size:11px;color:var(--text-2);">' +
+            '<span>RS-Ratio: <strong style="color:#f1f5f9;">' + snap.rsr.toFixed(2) + '</strong></span>' +
+            '<span>RS-Mom: <strong style="color:#f1f5f9;">' + snap.rsm.toFixed(2) + '</strong></span>' +
+            '<span>vs 10E: <strong class="' + retCls(snap.emaDist) + '">' + fmtPct(snap.emaDist) + '</strong></span>' +
+            '<span>1M: <strong class="' + retCls(snap.r1m) + '">' + fmtPct(snap.r1m) + '</strong></span>' +
+          '</div>';
+
+        tip.style.display = 'block';
+        var x = ev.clientX - rect.left + 14;
+        var y = ev.clientY - rect.top - 12;
+        if (x + tip.offsetWidth > rect.width - 8) x = ev.clientX - rect.left - tip.offsetWidth - 14;
+        if (x < 8) x = 8;
+        if (y + tip.offsetHeight > rect.height - 8) y = rect.height - tip.offsetHeight - 8;
+        if (y < 8) y = 8;
+        tip.style.left = x + 'px';
+        tip.style.top = y + 'px';
+      }
+
+      function hideTooltip() {
+        document.getElementById('rrg-tooltip').style.display = 'none';
+      }
+
       function renderRRG(model, idx, plottedSnaps) {
         var svg = document.getElementById('rrg-svg');
         var W = 820, H = 530;
-        var pad = { l: 54, r: 28, t: 28, b: 42 };
-        var pw = W - pad.l - pad.r;
-        var ph = H - pad.t - pad.b;
+        var L = 54, R = 24, T = 26, B = 44;
+        var pw = W - L - R;
+        var ph = H - T - B;
 
-        // Compute symmetric bounds around 100
-        var maxDevX = 2.0, maxDevY = 2.0;
-        plottedSnaps.forEach(function (s) {
-          var it = model.items[s.key];
+        document.getElementById('plotted-count').textContent = plottedSnaps.length;
+
+        var leg = document.getElementById('legend-chips');
+        leg.innerHTML = plottedSnaps.map(function (s) {
+          return '<button type="button" class="legend-chip ' + (s.key === state.selectedKey ? 'selected' : '') + '" data-key="' + s.key + '">' +
+            '<span style="width:7px;height:7px;border-radius:50%;background:' + s.meta.color + ';"></span>' +
+            '<span>' + s.meta.short + '</span>' +
+          '</button>';
+        }).join('');
+        leg.querySelectorAll('.legend-chip').forEach(function (c) {
+          c.addEventListener('click', function () {
+            state.selectedKey = c.getAttribute('data-key');
+            renderAll();
+          });
+        });
+
+        var maxDevX = 1.8, maxDevY = 1.8;
+        var trails = plottedSnaps.map(function (s) {
+          var item = model.items[s.key];
+          var pts = [];
           var start = Math.max(0, idx - state.tailLen + 1);
           for (var t = start; t <= idx; t++) {
-            if (isFinite(it.rsr[t])) maxDevX = Math.max(maxDevX, Math.abs(it.rsr[t] - 100));
-            if (isFinite(it.rsm[t])) maxDevY = Math.max(maxDevY, Math.abs(it.rsm[t] - 100));
+            var rx = item.rsr[t], ry = item.rsm[t];
+            if (isFinite(rx) && isFinite(ry)) {
+              pts.push({ rsr: rx, rsm: ry, date: model.dates[t] });
+              maxDevX = Math.max(maxDevX, Math.abs(rx - 100));
+              maxDevY = Math.max(maxDevY, Math.abs(ry - 100));
+            }
           }
+          return { snap: s, pts: pts };
         });
-        maxDevX = Math.ceil((maxDevX * 1.18) * 2) / 2;
-        maxDevY = Math.ceil((maxDevY * 1.18) * 2) / 2;
 
-        function sx(v) { return pad.l + ((v - (100 - maxDevX)) / (2 * maxDevX)) * pw; }
-        function sy(v) { return pad.t + ph - ((v - (100 - maxDevY)) / (2 * maxDevY)) * ph; }
+        var spanX = Math.min(8, Math.max(2.0, maxDevX * 1.18));
+        var spanY = Math.min(8, Math.max(2.0, maxDevY * 1.18));
+        var minX = 100 - spanX, maxX = 100 + spanX;
+        var minY = 100 - spanY, maxY = 100 + spanY;
 
-        var cx = sx(100), cy = sy(100);
+        function mapX(v) { return L + ((v - minX) / (maxX - minX)) * pw; }
+        function mapY(v) { return T + ((maxY - v) / (maxY - minY)) * ph; }
+
+        var cx = mapX(100), cy = mapY(100);
         var parts = [];
 
-        // Quadrant fills
-        parts.push('<rect x="' + pad.l + '" y="' + pad.t + '" width="' + (cx - pad.l) + '" height="' + (cy - pad.t) + '" fill="rgba(99,102,241,0.06)"/>');
-        parts.push('<rect x="' + cx + '" y="' + pad.t + '" width="' + (pad.l + pw - cx) + '" height="' + (cy - pad.t) + '" fill="rgba(16,185,129,0.07)"/>');
-        parts.push('<rect x="' + pad.l + '" y="' + cy + '" width="' + (cx - pad.l) + '" height="' + (pad.t + ph - cy) + '" fill="rgba(239,68,68,0.06)"/>');
-        parts.push('<rect x="' + cx + '" y="' + cy + '" width="' + (pad.l + pw - cx) + '" height="' + (pad.t + ph - cy) + '" fill="rgba(245,158,11,0.06)"/>');
+        parts.push('<rect x="' + L + '" y="' + T + '" width="' + (cx - L) + '" height="' + (cy - T) + '" fill="rgba(99,102,241,0.08)" />');
+        parts.push('<rect x="' + cx + '" y="' + T + '" width="' + (W - R - cx) + '" height="' + (cy - T) + '" fill="rgba(16,185,129,0.09)" />');
+        parts.push('<rect x="' + L + '" y="' + cy + '" width="' + (cx - L) + '" height="' + (H - B - cy) + '" fill="rgba(239,68,68,0.08)" />');
+        parts.push('<rect x="' + cx + '" y="' + cy + '" width="' + (W - R - cx) + '" height="' + (H - B - cy) + '" fill="rgba(245,158,11,0.08)" />');
 
-        // Grid lines
-        var steps = [-1, -0.5, 0, 0.5, 1];
-        steps.forEach(function (f) {
-          var xv = 100 + f * maxDevX;
-          var yv = 100 + f * maxDevY;
-          var x = sx(xv), y = sy(yv);
-          var isCenter = f === 0;
-          parts.push('<line x1="' + x.toFixed(1) + '" y1="' + pad.t + '" x2="' + x.toFixed(1) + '" y2="' + (pad.t + ph) + '" stroke="' + (isCenter ? 'rgba(148,163,184,0.45)' : 'rgba(148,163,184,0.10)') + '" stroke-dasharray="' + (isCenter ? '5,5' : '') + '"/>');
-          parts.push('<line x1="' + pad.l + '" y1="' + y.toFixed(1) + '" x2="' + (pad.l + pw) + '" y2="' + y.toFixed(1) + '" stroke="' + (isCenter ? 'rgba(148,163,184,0.45)' : 'rgba(148,163,184,0.10)') + '" stroke-dasharray="' + (isCenter ? '5,5' : '') + '"/>');
-          parts.push('<text x="' + x.toFixed(1) + '" y="' + (H - 16) + '" fill="#64748b" font-size="10" text-anchor="middle" font-family="monospace">' + xv.toFixed(1) + '</text>');
-          parts.push('<text x="' + (pad.l - 8) + '" y="' + (y + 3).toFixed(1) + '" fill="#64748b" font-size="10" text-anchor="end" font-family="monospace">' + yv.toFixed(1) + '</text>');
+        var tickCount = 4;
+        for (var g = 0; g <= tickCount; g++) {
+          var vx = minX + ((maxX - minX) * g) / tickCount;
+          var gx = mapX(vx);
+          parts.push('<line x1="' + gx.toFixed(1) + '" y1="' + T + '" x2="' + gx.toFixed(1) + '" y2="' + (H - B) + '" stroke="rgba(148,163,184,0.10)" stroke-dasharray="3,4" />');
+          parts.push('<text x="' + gx.toFixed(1) + '" y="' + (H - B + 16) + '" fill="#64748b" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">' + vx.toFixed(1) + '</text>');
+
+          var vy = minY + ((maxY - minY) * g) / tickCount;
+          var gy = mapY(vy);
+          parts.push('<line x1="' + L + '" y1="' + gy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(148,163,184,0.10)" stroke-dasharray="3,4" />');
+          parts.push('<text x="' + (L - 8) + '" y="' + (gy + 3).toFixed(1) + '" fill="#64748b" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">' + vy.toFixed(1) + '</text>');
+        }
+
+        parts.push('<line x1="' + cx.toFixed(1) + '" y1="' + T + '" x2="' + cx.toFixed(1) + '" y2="' + (H - B) + '" stroke="rgba(148,163,184,0.42)" stroke-width="1.2" />');
+        parts.push('<line x1="' + L + '" y1="' + cy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + cy.toFixed(1) + '" stroke="rgba(148,163,184,0.42)" stroke-width="1.2" />');
+        parts.push('<rect x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '" fill="none" stroke="rgba(148,163,184,0.22)" />');
+
+        parts.push('<text x="' + (L + 10) + '" y="' + (T + 18) + '" fill="rgba(129,140,248,0.75)" font-size="11" font-weight="800" letter-spacing="1">IMPROVING</text>');
+        parts.push('<text x="' + (W - R - 10) + '" y="' + (T + 18) + '" fill="rgba(52,211,153,0.8)" font-size="11" font-weight="800" letter-spacing="1" text-anchor="end">LEADING</text>');
+        parts.push('<text x="' + (L + 10) + '" y="' + (H - B - 10) + '" fill="rgba(248,113,113,0.75)" font-size="11" font-weight="800" letter-spacing="1">LAGGING</text>');
+        parts.push('<text x="' + (W - R - 10) + '" y="' + (H - B - 10) + '" fill="rgba(251,191,36,0.78)" font-size="11" font-weight="800" letter-spacing="1" text-anchor="end">WEAKENING</text>');
+
+        parts.push('<text x="' + (L + pw / 2) + '" y="' + (H - 8) + '" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle">RS-Ratio (Relative Strength vs ' + model.benchmark + ')</text>');
+        parts.push('<text x="15" y="' + (T + ph / 2) + '" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle" transform="rotate(-90 15 ' + (T + ph / 2) + ')">RS-Momentum</text>');
+
+        trails.sort(function (a, b) {
+          var aSel = a.snap.key === state.selectedKey ? 1 : 0;
+          var bSel = b.snap.key === state.selectedKey ? 1 : 0;
+          return aSel - bSel;
         });
 
-        // Axis titles & quadrant labels
-        parts.push('<text x="' + (pad.l + 12) + '" y="' + (pad.t + 18) + '" fill="#818cf8" font-size="11" font-weight="800" letter-spacing="1">IMPROVING</text>');
-        parts.push('<text x="' + (pad.l + pw - 12) + '" y="' + (pad.t + 18) + '" fill="#34d399" font-size="11" font-weight="800" text-anchor="end" letter-spacing="1">LEADING</text>');
-        parts.push('<text x="' + (pad.l + 12) + '" y="' + (pad.t + ph - 10) + '" fill="#f87171" font-size="11" font-weight="800" letter-spacing="1">LAGGING</text>');
-        parts.push('<text x="' + (pad.l + pw - 12) + '" y="' + (pad.t + ph - 10) + '" fill="#fbbf24" font-size="11" font-weight="800" text-anchor="end" letter-spacing="1">WEAKENING</text>');
-        parts.push('<text x="' + (pad.l + pw / 2) + '" y="' + (H - 3) + '" fill="#94a3b8" font-size="10" font-weight="700" text-anchor="middle">RS-Ratio (Relative Strength)</text>');
-        parts.push('<text x="14" y="' + (pad.t + ph / 2) + '" fill="#94a3b8" font-size="10" font-weight="700" text-anchor="middle" transform="rotate(-90 14 ' + (pad.t + ph / 2) + ')">RS-Momentum</text>');
+        var activeFocus = state.hoveredKey || (state.dimUnfocused ? state.selectedKey : null);
 
-        // Focus target
-        var focusKey = state.hoveredKey || (state.dimUnfocused ? state.selectedKey : null);
-
-        // Draw trails (unfocused first, focused on top)
-        var ordered = plottedSnaps.slice().sort(function (a, b) {
-          var af = (a.key === focusKey || a.key === state.selectedKey) ? 1 : 0;
-          var bf = (b.key === focusKey || b.key === state.selectedKey) ? 1 : 0;
-          return af - bf;
-        });
-
-        ordered.forEach(function (s) {
-          var it = model.items[s.key];
-          var isSelected = s.key === state.selectedKey;
-          var isHovered = s.key === state.hoveredKey;
-          var isDimmed = focusKey && s.key !== focusKey && !(isSelected && !state.hoveredKey);
-          var op = isDimmed ? 0.14 : 1;
-
-          var start = Math.max(0, idx - state.tailLen + 1);
-          var pts = [];
-          for (var t = start; t <= idx; t++) {
-            if (isFinite(it.rsr[t]) && isFinite(it.rsm[t])) {
-              pts.push({ x: sx(it.rsr[t]), y: sy(it.rsm[t]) });
-            }
-          }
+        trails.forEach(function (tr) {
+          var s = tr.snap;
+          var pts = tr.pts;
           if (!pts.length) return;
 
-          parts.push('<g class="rrg-node-group" data-key="' + s.key + '" style="cursor:pointer;opacity:' + op + ';transition:opacity 0.12s;">');
-          if (pts.length > 1) {
-            var dPath = pts.map(function (p, pi) { return (pi === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
-            parts.push('<path d="' + dPath + '" fill="none" stroke="' + s.meta.color + '" stroke-width="' + (isSelected || isHovered ? 2.8 : 1.8) + '" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>');
-            for (var pIdx = 0; pIdx < pts.length - 1; pIdx++) {
-              parts.push('<circle cx="' + pts[pIdx].x.toFixed(1) + '" cy="' + pts[pIdx].y.toFixed(1) + '" r="2.2" fill="' + s.meta.color + '" opacity="0.55"/>');
+          var isSelected = s.key === state.selectedKey;
+          var isHovered = s.key === state.hoveredKey;
+          var isDim = activeFocus && s.key !== activeFocus && !(isSelected && !state.hoveredKey);
+          var opacity = isDim ? 0.14 : 1;
+          var col = s.meta.color;
+
+          var mapped = pts.map(function (p) { return { x: mapX(p.rsr), y: mapY(p.rsm) }; });
+          var polyStr = mapped.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+          var head = mapped[mapped.length - 1];
+
+          parts.push('<g class="rrg-node-group" data-key="' + s.key + '" style="cursor:pointer;opacity:' + opacity + ';transition:opacity 0.14s ease;">');
+          if (mapped.length > 1) {
+            parts.push('<polyline points="' + polyStr + '" fill="none" stroke="transparent" stroke-width="12" />');
+            parts.push('<polyline points="' + polyStr + '" fill="none" stroke="' + col + '" stroke-width="' + (isSelected || isHovered ? 2.8 : 1.8) + '" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.85" />');
+            for (var pIdx = 0; pIdx < mapped.length - 1; pIdx++) {
+              var rDot = pIdx === 0 ? 2.2 : 2.6;
+              parts.push('<circle cx="' + mapped[pIdx].x.toFixed(1) + '" cy="' + mapped[pIdx].y.toFixed(1) + '" r="' + rDot + '" fill="' + col + '" fill-opacity="0.65" />');
             }
           }
 
-          var head = pts[pts.length - 1];
-          if (isSelected || isHovered) {
-            parts.push('<circle cx="' + head.x.toFixed(1) + '" cy="' + head.y.toFixed(1) + '" r="10" fill="' + s.meta.color + '" opacity="0.22"/>');
+          if (isSelected) {
+            parts.push('<circle cx="' + head.x.toFixed(1) + '" cy="' + head.y.toFixed(1) + '" r="10" fill="' + col + '" fill-opacity="0.22" stroke="' + col + '" stroke-width="1.2" />');
           }
-          parts.push('<circle cx="' + head.x.toFixed(1) + '" cy="' + head.y.toFixed(1) + '" r="' + (isSelected || isHovered ? 5.6 : 4.4) + '" fill="' + s.meta.color + '" stroke="#060b14" stroke-width="1.5"/>');
+          parts.push('<circle cx="' + head.x.toFixed(1) + '" cy="' + head.y.toFixed(1) + '" r="' + (isSelected || isHovered ? 6 : 4.8) + '" fill="' + col + '" stroke="#060b14" stroke-width="1.6" />');
 
           var showLabel = state.labelsMode === 'all' || isSelected || isHovered || s.shifted;
-          if (showLabel) {
-            var lx = head.x + 8;
-            var ly = head.y + 3;
-            var anchor = 'start';
-            if (lx > W - 85) { lx = head.x - 8; anchor = 'end'; }
-            parts.push('<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#f8fafc" font-size="' + (isSelected || isHovered ? 11 : 10) + '" font-weight="' + (isSelected || isHovered ? 800 : 600) + '" text-anchor="' + anchor + '" style="paint-order:stroke;stroke:#060b14;stroke-width:3px;">' + s.meta.short + '</text>');
-          }
+          var lx = head.x + 8;
+          var ly = head.y + 3;
+          var anchor = 'start';
+          if (lx > W - 85) { lx = head.x - 8; anchor = 'end'; }
+          parts.push('<text class="rrg-label" data-always="' + (showLabel ? '1' : '0') + '" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#f8fafc" font-size="' + (isSelected || isHovered ? 11 : 10) + '" font-weight="' + (isSelected || isHovered ? 800 : 600) + '" text-anchor="' + anchor + '" style="paint-order:stroke;stroke:#060b14;stroke-width:3px;' + (showLabel ? '' : 'display:none;') + '">' + s.meta.short + '</text>');
           parts.push('</g>');
         });
 
         svg.innerHTML = parts.join('');
 
-        // Bind hover & click
         var snapMap = {};
         plottedSnaps.forEach(function (s) { snapMap[s.key] = s; });
+
+        function applyHoverHighlight(hoverKey) {
+          var focus = hoverKey || (state.dimUnfocused ? state.selectedKey : null);
+          svg.querySelectorAll('.rrg-node-group').forEach(function (node) {
+            var k = node.getAttribute('data-key');
+            var isSel = k === state.selectedKey;
+            var isHov = k === hoverKey;
+            var isDim = focus && k !== focus && !(isSel && !hoverKey);
+            node.style.opacity = isDim ? '0.14' : '1';
+            var lbl = node.querySelector('.rrg-label');
+            if (lbl) {
+              var alwaysVis = lbl.getAttribute('data-always') === '1';
+              lbl.style.display = (alwaysVis || isHov) ? '' : 'none';
+            }
+          });
+        }
 
         svg.querySelectorAll('.rrg-node-group').forEach(function (g) {
           var key = g.getAttribute('data-key');
           g.addEventListener('mouseenter', function (e) {
             state.hoveredKey = key;
-            renderRRG(model, idx, plottedSnaps);
+            applyHoverHighlight(key);
             showTooltip(snapMap[key], e);
           });
           g.addEventListener('mousemove', function (e) {
@@ -2651,127 +2713,95 @@
           g.addEventListener('mouseleave', function () {
             state.hoveredKey = null;
             hideTooltip();
-            renderRRG(model, idx, plottedSnaps);
+            applyHoverHighlight(null);
           });
           g.addEventListener('click', function () {
             state.selectedKey = key;
             renderAll();
           });
         });
-
-        // Legend chips
-        document.getElementById('plotted-count').textContent = plottedSnaps.length;
-        var legend = document.getElementById('legend-chips');
-        legend.innerHTML = plottedSnaps.map(function (s) {
-          return '<button type="button" class="legend-chip' + (s.key === state.selectedKey ? ' selected' : '') + '" data-key="' + s.key + '">' +
-            '<span style="width:7px;height:7px;border-radius:50%;background:' + s.meta.color + ';"></span>' + s.meta.short +
-          '</button>';
-        }).join('');
-        legend.querySelectorAll('.legend-chip').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            state.selectedKey = btn.getAttribute('data-key');
-            renderAll();
-          });
-        });
-      }
-
-      function showTooltip(s, evt) {
-        if (!s) return;
-        var tip = document.getElementById('rrg-tooltip');
-        var stage = document.getElementById('rrg-stage').getBoundingClientRect();
-        tip.innerHTML =
-          '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;">' +
-            '<strong style="font-size:12px;">' + s.key + '</strong>' +
-            '<span class="q-pill q-' + s.quadrant + '" style="font-size:10px;padding:1px 6px;">' + s.quadrant + '</span>' +
-          '</div>' +
-          '<div style="font-family:var(--mono);font-size:11px;color:var(--text-2);display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;">' +
-            '<span>RS-Ratio: <strong style="color:#f8fafc;">' + s.rsr.toFixed(2) + '</strong></span>' +
-            '<span>RS-Mom: <strong style="color:#f8fafc;">' + s.rsm.toFixed(2) + '</strong></span>' +
-            '<span>10-EMA: <strong class="' + (s.aboveEma ? 'pos' : 'neg') + '">' + fmtPct(s.emaDist) + '</strong></span>' +
-            '<span>1M: <strong class="' + (s.r1m >= 0 ? 'pos' : 'neg') + '">' + fmtPct(s.r1m) + '</strong></span>' +
-          '</div>';
-        tip.style.display = 'block';
-        var x = evt.clientX - stage.left + 14;
-        var y = evt.clientY - stage.top - 10;
-        if (x + 215 > stage.width) x = evt.clientX - stage.left - 220;
-        if (y + 95 > stage.height) y = stage.height - 100;
-        tip.style.left = Math.max(8, x) + 'px';
-        tip.style.top = Math.max(8, y) + 'px';
-      }
-
-      function hideTooltip() {
-        document.getElementById('rrg-tooltip').style.display = 'none';
       }
 
       /* =====================================================================
-         11. SECTOR INSPECTOR & SPARKLINE
+         12. SECTOR INSPECTOR, SPARKLINE & LEADERBOARD
          ===================================================================== */
-      function renderInspector(model, idx, allSnaps) {
-        var snap = allSnaps.find(function (s) { return s.key === state.selectedKey; }) || allSnaps[0];
-        if (!snap) return;
-        state.selectedKey = snap.key;
+      function renderInspector(model, idx, allModelSnaps) {
+        if (!allModelSnaps.length) return;
+        var snap = null;
+        for (var i = 0; i < allModelSnaps.length; i++) {
+          if (allModelSnaps[i].key === state.selectedKey) { snap = allModelSnaps[i]; break; }
+        }
+        if (!snap) {
+          snap = allModelSnaps[0];
+          state.selectedKey = snap.key;
+        }
 
-        var catInfo = CATEGORY_META[snap.meta.cat] || CATEGORY_META.theme;
+        var cm = CATEGORY_META[snap.meta.cat] || CATEGORY_META.theme;
         var catEl = document.getElementById('insp-cat');
-        catEl.className = 'cat-tag ' + catInfo.cls;
-        catEl.textContent = catInfo.label;
+        catEl.textContent = cm.label;
+        catEl.className = 'cat-tag ' + cm.cls;
 
         document.getElementById('insp-ticker').textContent = snap.meta.ticker;
         document.getElementById('insp-dot').style.background = snap.meta.color;
         document.getElementById('insp-name').textContent = snap.key;
-        document.getElementById('insp-rank').textContent = 'Rank #' + snap.rank + ' of ' + allSnaps.length;
-        document.getElementById('insp-price').textContent = isFinite(snap.price) ? '\u20b9' + snap.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '--';
+        document.getElementById('insp-rank').textContent = 'Rank #' + snap.rank + ' of ' + allModelSnaps.length;
+        document.getElementById('insp-price').textContent = isFinite(snap.price) ? snap.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '--';
 
-        document.getElementById('insp-history').textContent = snap.days + ' trading days (from ' + snap.firstDate + ')';
-        document.getElementById('insp-history-badge').textContent = snap.days >= state.rawDates.length - 10 ? 'Full History' : 'Partial History';
+        document.getElementById('insp-history').textContent = 'History: ' + snap.days + ' trading days (from ' + snap.firstDate + ')';
+        var hBadge = document.getElementById('insp-history-badge');
+        if (snap.days < 180) {
+          hBadge.textContent = 'Partial History';
+          hBadge.className = 'cat-tag cat-broad';
+        } else {
+          hBadge.textContent = 'Full History';
+          hBadge.className = 'cat-tag cat-core';
+        }
 
         document.getElementById('insp-shift-tf').textContent = state.timeframe === 'weekly' ? 'Prev Week' : 'Prev Session';
         document.getElementById('insp-date').textContent = model.dates[idx] || '--';
 
-        var qp = document.getElementById('insp-q-prev');
-        qp.className = 'q-pill q-' + snap.prevQuadrant;
-        qp.textContent = snap.prevQuadrant;
-        var qc = document.getElementById('insp-q-curr');
-        qc.className = 'q-pill q-' + snap.quadrant;
-        qc.textContent = snap.quadrant;
+        var qPrev = document.getElementById('insp-q-prev');
+        qPrev.textContent = snap.prevQuadrant;
+        qPrev.className = 'q-pill q-' + snap.prevQuadrant;
+
+        var qCurr = document.getElementById('insp-q-curr');
+        qCurr.textContent = snap.quadrant;
+        qCurr.className = 'q-pill q-' + snap.quadrant;
+
         document.getElementById('insp-q-desc').textContent = QUADRANT_INFO[snap.quadrant] || '';
 
         document.getElementById('insp-rsr').textContent = snap.rsr.toFixed(2);
-        var rsrC = document.getElementById('insp-rsr-chg');
-        rsrC.textContent = (snap.rsrChg >= 0 ? '+' : '') + snap.rsrChg.toFixed(2);
-        rsrC.className = snap.rsrChg >= 0 ? 'pos' : 'neg';
+        var rsrChgEl = document.getElementById('insp-rsr-chg');
+        rsrChgEl.textContent = (snap.rsrChg >= 0 ? '+' : '') + snap.rsrChg.toFixed(2);
+        rsrChgEl.className = retCls(snap.rsrChg);
 
         document.getElementById('insp-rsm').textContent = snap.rsm.toFixed(2);
-        var rsmC = document.getElementById('insp-rsm-chg');
-        rsmC.textContent = (snap.rsmChg >= 0 ? '+' : '') + snap.rsmChg.toFixed(2);
-        rsmC.className = snap.rsmChg >= 0 ? 'pos' : 'neg';
+        var rsmChgEl = document.getElementById('insp-rsm-chg');
+        rsmChgEl.textContent = (snap.rsmChg >= 0 ? '+' : '') + snap.rsmChg.toFixed(2);
+        rsmChgEl.className = retCls(snap.rsmChg);
 
         var emaPill = document.getElementById('insp-ema-pill');
-        emaPill.className = 'q-pill ' + (snap.aboveEma ? 'q-Leading' : 'q-Lagging');
         emaPill.textContent = snap.aboveEma ? 'Above 10 EMA' : 'Below 10 EMA';
-        document.getElementById('insp-ema-val').textContent = isFinite(snap.ema10) ? 'EMA: \u20b9' + snap.ema10.toFixed(2) : 'EMA: --';
-        var emaD = document.getElementById('insp-ema-dist');
-        emaD.textContent = fmtPct(snap.emaDist);
-        emaD.className = 'stat-val ' + (snap.aboveEma ? 'pos' : 'neg');
+        emaPill.className = 'q-pill ' + (snap.aboveEma ? 'q-Leading' : 'q-Lagging');
+        document.getElementById('insp-ema-val').textContent = 'EMA: ' + (isFinite(snap.ema10) ? snap.ema10.toFixed(2) : '--');
+        setRetCell('insp-ema-dist', snap.emaDist);
 
         setRetCell('insp-r1d', snap.r1d);
         setRetCell('insp-r1w', snap.r1w);
         setRetCell('insp-r1m', snap.r1m);
         setRetCell('insp-r3m', snap.r3m);
 
-        // 12-Period Sparkline
-        var it = model.items[snap.key];
-        var sStart = Math.max(0, idx - 11);
+        var item = model.items[snap.key];
         var rsrVals = [], rsmVals = [];
-        for (var k = sStart; k <= idx; k++) {
-          if (isFinite(it.rsr[k]) && isFinite(it.rsm[k])) {
-            rsrVals.push(it.rsr[k]);
-            rsmVals.push(it.rsm[k]);
+        var start = Math.max(0, idx - 11);
+        for (var k = start; k <= idx; k++) {
+          if (isFinite(item.rsr[k]) && isFinite(item.rsm[k])) {
+            rsrVals.push(item.rsr[k]);
+            rsmVals.push(item.rsm[k]);
           }
         }
         renderSparkline(rsrVals, rsmVals);
 
-        // Constituents
         var cWrap = document.getElementById('insp-constituents');
         var list = snap.meta.constituents || [];
         cWrap.innerHTML = list.map(function (c) {
@@ -2786,57 +2816,73 @@
 
       function renderSparkline(rsrVals, rsmVals) {
         var wrap = document.getElementById('insp-spark');
-        if (rsrVals.length < 2) { wrap.innerHTML = '<div class="section-sub">Not enough history.</div>'; return; }
+        if (!rsrVals.length || rsrVals.length < 2) {
+          wrap.innerHTML = '<div class="section-sub" style="padding-top:24px;text-align:center;">Insufficient history</div>';
+          return;
+        }
+        var W = 300, H = 74, pad = 8;
         var all = rsrVals.concat(rsmVals).concat([100]);
         var mn = Math.min.apply(null, all) - 0.3;
         var mx = Math.max.apply(null, all) + 0.3;
-        var W = 320, H = 74;
-        function px(i) { return 6 + (i / (rsrVals.length - 1)) * (W - 12); }
-        function py(v) { return H - 8 - ((v - mn) / (mx - mn)) * (H - 16); }
-        var y100 = py(100);
-        var p1 = rsrVals.map(function (v, i) { return (i === 0 ? 'M' : 'L') + px(i).toFixed(1) + ',' + py(v).toFixed(1); }).join(' ');
-        var p2 = rsmVals.map(function (v, i) { return (i === 0 ? 'M' : 'L') + px(i).toFixed(1) + ',' + py(v).toFixed(1); }).join(' ');
-        wrap.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="100%">' +
-          '<line x1="6" y1="' + y100.toFixed(1) + '" x2="' + (W - 6) + '" y2="' + y100.toFixed(1) + '" stroke="rgba(148,163,184,0.35)" stroke-dasharray="4,4"/>' +
-          '<path d="' + p1 + '" fill="none" stroke="#38bdf8" stroke-width="2"/>' +
-          '<path d="' + p2 + '" fill="none" stroke="#a855f7" stroke-width="2"/>' +
-        '</svg>';
+        if (mx - mn < 0.8) { mn -= 0.4; mx += 0.4; }
+
+        function sx(i) { return pad + (i / (rsrVals.length - 1)) * (W - pad * 2); }
+        function sy(v) { return pad + ((mx - v) / (mx - mn)) * (H - pad * 2); }
+
+        var y100 = sy(100);
+        var rsrPts = rsrVals.map(function (v, i) { return sx(i).toFixed(1) + ',' + sy(v).toFixed(1); }).join(' ');
+        var rsmPts = rsmVals.map(function (v, i) { return sx(i).toFixed(1) + ',' + sy(v).toFixed(1); }).join(' ');
+        var lastX = sx(rsrVals.length - 1).toFixed(1);
+
+        wrap.innerHTML =
+          '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:100%;display:block;">' +
+            '<line x1="' + pad + '" y1="' + y100.toFixed(1) + '" x2="' + (W - pad) + '" y2="' + y100.toFixed(1) + '" stroke="rgba(148,163,184,0.35)" stroke-dasharray="3,3" />' +
+            '<polyline points="' + rsrPts + '" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />' +
+            '<polyline points="' + rsmPts + '" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />' +
+            '<circle cx="' + lastX + '" cy="' + sy(rsrVals[rsrVals.length - 1]).toFixed(1) + '" r="3" fill="#38bdf8" />' +
+            '<circle cx="' + lastX + '" cy="' + sy(rsmVals[rsmVals.length - 1]).toFixed(1) + '" r="3" fill="#a855f7" />' +
+          '</svg>';
       }
 
-      /* =====================================================================
-         12. LEADERBOARD TABLE
-         ===================================================================== */
-      function renderLeaderboard(snaps) {
-        document.getElementById('table-count').textContent = snaps.length + ' rows';
-        var sorted = snaps.slice().sort(function (a, b) {
-          var col = state.sortCol;
-          var va = col === 'name' ? a.key : (col === 'quadrant' ? a.quadrant : a[col]);
-          var vb = col === 'name' ? b.key : (col === 'quadrant' ? b.quadrant : b[col]);
-          if (typeof va === 'string') return state.sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-          va = isFinite(va) ? va : -999999;
-          vb = isFinite(vb) ? vb : -999999;
-          return state.sortDir === 'asc' ? va - vb : vb - va;
+      function renderLeaderboard(plottedSnaps) {
+        var rows = plottedSnaps.slice();
+        var col = state.sortCol;
+        var mult = state.sortDir === 'asc' ? 1 : -1;
+
+        rows.sort(function (a, b) {
+          if (col === 'name') return a.key.localeCompare(b.key) * mult;
+          if (col === 'quadrant') return a.quadrant.localeCompare(b.quadrant) * mult;
+          var va = isFinite(a[col]) ? a[col] : -999999;
+          var vb = isFinite(b[col]) ? b[col] : -999999;
+          return (va - vb) * mult;
         });
 
-        var tbody = document.getElementById('leaderboard-body');
-        tbody.innerHTML = sorted.map(function (s) {
-          var sel = s.key === state.selectedKey ? ' class="selected-row"' : '';
-          var shiftTag = s.shifted ? '<span class="new-badge" title="' + s.prevQuadrant + ' -> ' + s.quadrant + '">NEW</span>' : '';
-          return '<tr' + sel + ' data-key="' + s.key + '">' +
-            '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + s.meta.color + ';margin-right:7px;"></span><strong>' + s.key + '</strong>' + shiftTag + '</td>' +
+        document.getElementById('table-count').textContent = rows.length + ' rows';
+        var body = document.getElementById('leaderboard-body');
+
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-3);padding:18px;">No symbols match the current filter.</td></tr>';
+          return;
+        }
+
+        body.innerHTML = rows.map(function (s) {
+          var selCls = s.key === state.selectedKey ? 'selected-row' : '';
+          var newTag = s.shifted ? '<span class="new-badge">NEW</span>' : '';
+          return '<tr class="' + selCls + '" data-key="' + s.key + '">' +
+            '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + s.meta.color + ';margin-right:7px;"></span><strong>' + s.key + '</strong>' + newTag + '</td>' +
             '<td><span class="q-pill q-' + s.quadrant + '">' + s.quadrant + '</span></td>' +
             '<td>' + s.rsr.toFixed(2) + '</td>' +
             '<td>' + s.rsm.toFixed(2) + '</td>' +
-            '<td class="' + (s.aboveEma ? 'pos' : 'neg') + '">' + fmtPct(s.emaDist) + '</td>' +
+            '<td class="' + retCls(s.emaDist) + '">' + fmtPct(s.emaDist) + '</td>' +
             '<td class="' + retCls(s.r1d) + '">' + fmtPct(s.r1d) + '</td>' +
             '<td class="' + retCls(s.r1w) + '">' + fmtPct(s.r1w) + '</td>' +
             '<td class="' + retCls(s.r1m) + '">' + fmtPct(s.r1m) + '</td>' +
             '<td class="' + retCls(s.r3m) + '">' + fmtPct(s.r3m) + '</td>' +
-            '<td class="neu">' + s.days + 'd</td>' +
+            '<td style="color:var(--text-3);">' + s.days + 'd</td>' +
           '</tr>';
         }).join('');
 
-        tbody.querySelectorAll('tr').forEach(function (tr) {
+        body.querySelectorAll('tr[data-key]').forEach(function (tr) {
           tr.addEventListener('click', function () {
             state.selectedKey = tr.getAttribute('data-key');
             renderAll();
@@ -2852,7 +2898,6 @@
         if (!model || !model.dates.length) return;
         var idx = getActiveIndex(model);
 
-        // Sync top toggles
         document.querySelectorAll('#benchmark-group .seg-btn').forEach(function (b) {
           b.classList.toggle('active', b.getAttribute('data-bench') === state.benchmark);
         });
@@ -2860,7 +2905,6 @@
           b.classList.toggle('active', b.getAttribute('data-tf') === state.timeframe);
         });
 
-        // Sync sliders & labels
         var maxReplay = Math.min(29, Math.max(0, model.dates.length - 1));
         var dSlider = document.getElementById('date-slider');
         dSlider.max = maxReplay;
@@ -2919,18 +2963,27 @@
       }
 
       function copyText(text, msg) {
-        try {
-          var ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          showToast(msg || 'Copied to clipboard', 'success');
-        } catch (e) {
-          showToast('Copy failed', 'error');
+        function fallbackCopy() {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast(msg || 'Copied to clipboard', 'success');
+          } catch (e) {
+            showToast('Copy failed', 'error');
+          }
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            showToast(msg || 'Copied to clipboard', 'success');
+          }).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
         }
       }
 
@@ -3006,6 +3059,8 @@
       }
 
       function initEvents() {
+        var backdrop = document.getElementById('modal-backdrop');
+
         document.querySelectorAll('#benchmark-group .seg-btn').forEach(function (btn) {
           btn.addEventListener('click', function () {
             state.benchmark = btn.getAttribute('data-bench');
@@ -3088,6 +3143,11 @@
         document.getElementById('btn-play').addEventListener('click', togglePlay);
 
         document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && backdrop.classList.contains('open')) {
+            backdrop.classList.remove('open');
+            return;
+          }
+          if (backdrop.classList.contains('open')) return;
           if (document.activeElement && ['INPUT', 'TEXTAREA'].indexOf(document.activeElement.tagName) !== -1) return;
           var model = getCurrentModel();
           if (!model) return;
@@ -3124,8 +3184,6 @@
           downloadFile('nse_rotation_leaderboard.csv', lines.join('\n'), 'text/csv');
         });
 
-        // Modal controls
-        var backdrop = document.getElementById('modal-backdrop');
         document.getElementById('btn-modal').addEventListener('click', function () {
           backdrop.classList.add('open');
           try {
@@ -3147,7 +3205,6 @@
           });
         });
 
-        // Upload handlers
         var dropZone = document.getElementById('drop-zone');
         var fileInput = document.getElementById('file-input');
         dropZone.addEventListener('click', function () { fileInput.click(); });
@@ -3205,7 +3262,6 @@
           downloadFile('eod_data_template.csv', rows.join('\n'), 'text/csv');
         });
 
-        // GitHub sync URL & script buttons
         document.getElementById('code-py').textContent = FETCH_PY_SCRIPT;
         document.getElementById('code-yml').textContent = WORKFLOW_YML_SCRIPT;
 
