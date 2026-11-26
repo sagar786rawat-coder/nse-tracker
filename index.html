@@ -1464,7 +1464,7 @@
         <div>
           <h1 class="brand-title">NSE Sector &amp; Theme Rotation Tracker</h1>
           <div class="brand-subrow">
-            <button id="sync-status-pill" class="sync-pill syncing" title="Automated GitHub Actions sync runs twice every weekday: 3:00 PM IST (Pre-Close Live snapshot) and 4:15 PM IST (EOD Final official close). Click to inspect or customize sync settings.">
+            <button id="sync-status-pill" class="sync-pill syncing" title="Automated GitHub Actions sync runs twice every weekday: 2:45 PM IST (Pre-Close Live snapshot) and 4:15 PM IST (EOD Final official close). Click to inspect or customize sync settings.">
               <span class="sync-dot"></span>
               <span id="sync-status-text">Checking ./eod_data.csv...</span>
             </button>
@@ -1949,7 +1949,7 @@
       <!-- TAB 2: GITHUB AUTO-SYNC SETUP -->
       <div id="tab-panel-github" class="modal-body hidden">
         <div class="info-banner">
-          <strong style="color:#7dd3fc;">Zero-Cost Automated Pre-Close &amp; EOD Sync (Mon–Fri):</strong> GitHub Actions updates both <span class="mono" style="color:#fff;">eod_data.csv</span> and <span class="mono" style="color:#fff;">last_updated.json</span> twice daily — <strong style="color:#fcd34d;">3:00 PM IST (Pre-Close Live)</strong> and <strong style="color:#6ee7b7;">4:15 PM IST (EOD Final)</strong> — so your tracker stays noise-free during midday chop while staying ready before the closing bell.
+          <strong style="color:#7dd3fc;">Zero-Cost Automated Pre-Close &amp; EOD Sync (Mon–Fri):</strong> GitHub Actions updates both <span class="mono" style="color:#fff;">eod_data.csv</span> and <span class="mono" style="color:#fff;">last_updated.json</span> twice daily — <strong style="color:#fcd34d;">2:45 PM IST (Pre-Close Live)</strong> and <strong style="color:#6ee7b7;">4:15 PM IST (EOD Final)</strong> — so your tracker stays noise-free during midday chop while staying ready before the closing bell.
         </div>
 
         <!-- Detected last_updated.json Metadata Status -->
@@ -2002,7 +2002,7 @@
         <!-- Ready-to-use .github/workflows/update-eod.yml (Copy + Download) -->
         <details class="code-disclosure">
           <summary>
-            <span>⚙️ <span class="mono">.github/workflows/update-eod.yml</span> — 3:00 PM Pre-Close &amp; 4:15 PM EOD Final (CSV + JSON)</span>
+            <span>⚙️ <span class="mono">.github/workflows/update-eod.yml</span> — 2:45 PM Pre-Close &amp; 4:15 PM EOD Final (CSV + JSON)</span>
             <div style="display:flex;gap:6px;">
               <button type="button" id="btn-copy-yml" class="btn btn-sm btn-ghost">Copy</button>
               <button type="button" id="btn-dl-yml" class="btn btn-sm btn-primary">Download update-eod.yml</button>
@@ -2466,13 +2466,13 @@ if __name__ == "__main__":
     main()
 `;
 
-      // Complete, ready-to-use 2-run GitHub Actions workflow YAML (3:00 PM IST Pre-Close & 4:15 PM IST EOD Final)
+      // Complete, ready-to-use 2-run GitHub Actions workflow YAML (2:45 PM IST Pre-Close & 4:15 PM IST EOD Final)
       const WORKFLOW_YML = `name: Update NSE Sector Data (Pre-Close & EOD)
 
 on:
   schedule:
-    # 3:00 PM IST (09:30 UTC) — Pre-Close snapshot ready by ~3:10-3:15 PM IST
-    - cron: '30 9 * * 1-5'
+    # 2:45 PM IST (09:15 UTC) — Pre-Close snapshot ready by ~2:50-3:00 PM IST
+    - cron: '15 9 * * 1-5'
     # 4:15 PM IST (10:45 UTC) — Final official NSE closing prices
     - cron: '45 10 * * 1-5'
   workflow_dispatch:
