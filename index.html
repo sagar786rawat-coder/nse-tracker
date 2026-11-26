@@ -977,8 +977,9 @@
         </div>
 
         <div id="tf-group" class="seg-group" role="group" aria-label="Timeframe selector">
-          <button type="button" class="seg-btn active" data-tf="daily">Daily EOD</button>
-          <button type="button" class="seg-btn" data-tf="weekly">Weekly Fri</button>
+          <button type="button" class="seg-btn" data-tf="daily14" title="Fast 14-day Daily EOD window (early rotation radar)">Daily 14d</button>
+          <button type="button" class="seg-btn active" data-tf="daily21" title="Smooth 21-day (1-month) Daily EOD window (primary swing view)">Daily 21d</button>
+          <button type="button" class="seg-btn" data-tf="weekly" title="10-week Friday close institutional trend">Weekly Fri</button>
         </div>
 
         <button type="button" id="btn-sync" class="btn-ghost" title="Re-fetch eod_data.csv and last_updated.json">
@@ -1011,7 +1012,7 @@
         <div>
           <div class="section-title">
             <span>Market-Cap Strength Regime</span>
-            <span class="cat-tag cat-mcap">Ranked vs NIFTY 500</span>
+            <span id="mcap-bench-badge" class="cat-tag cat-mcap">Ranked vs NIFTY 500</span>
             <span id="mcap-focus-hint" class="section-sub"></span>
           </div>
         </div>
@@ -1052,7 +1053,7 @@
           <div>
             <div class="section-title">
               <span>Relative Rotation Graph (RRG)</span>
-              <span id="rrg-subtitle-pill" class="cat-tag cat-core">Daily EOD &middot; 6-Period Tail</span>
+              <span id="rrg-subtitle-pill" class="cat-tag cat-core">Daily 21d &middot; 6-Period Tail</span>
               <button type="button" id="btn-clear-q" class="q-pill q-Leading" style="display:none;cursor:pointer;">
                 Quadrant: <span id="active-q-name"></span> &times;
               </button>
@@ -1225,7 +1226,7 @@
       <div>
         <strong>NSE Sector &amp; Theme Rotation Tracker (v1.0):</strong> Auto-syncs <code>./eod_data.csv</code> &amp; <code>./last_updated.json</code> on GitHub Pages (2:45 PM IST Pre-Close + 4:15 PM IST EOD Final). Analytical dashboard only; not SEBI-registered investment advice.
       </div>
-      <div>Zero-CDN Client-Side RRG &middot; Daily &amp; Weekly Fri Close</div>
+      <div>Zero-CDN Client-Side RRG &middot; Daily (14d / 21d) &amp; Weekly Fri Close</div>
     </footer>
   </div>
 
@@ -1322,7 +1323,7 @@
                 <tr>
                   <th>CSV Column Name</th>
                   <th>Yahoo Ticker</th>
-                  <th>Category</th>
+                  <th style="text-align:left;">Category</th>
                   <th style="text-align:left;">Constituents / Role</th>
                 </tr>
               </thead>
@@ -1561,25 +1562,28 @@
         '    if dropped:',
         '        print(f"Warning: skipped tickers with no data: {dropped}")',
         '',
-        '    intra = yf.download(list(active_ticker_map.keys()), period="1d", interval="5m", auto_adjust=True, progress=False)',
-        '    if not intra.empty and "Close" in intra:',
-        '        intra_close = intra["Close"]',
-        '        if isinstance(intra_close, pd.Series):',
-        '            intra_close = intra_close.to_frame(name=list(active_ticker_map.keys())[0])',
-        '        intra_close = intra_close.rename(columns=active_ticker_map)',
-        '        idx = pd.to_datetime(intra_close.index)',
-        '        if idx.tz is None:',
-        '            idx = idx.tz_localize("UTC")',
-        '        intra_close.index = idx.tz_convert("Asia/Kolkata")',
-        '        live_date = intra_close.index[-1].strftime("%Y-%m-%d")',
-        '        latest_row = intra_close.ffill().iloc[-1]',
-        '        if ((in_session and live_date == today_str) or (live_date > closes.index[-1])) and pd.notna(latest_row.get("NIFTY 50")):',
-        '            for col in valid_cols:',
-        '                val = latest_row.get(col)',
-        '                if pd.notna(val):',
-        '                    closes.loc[live_date, col] = float(val)',
-        '            closes = closes.sort_index()',
-        '            print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime(\'%H:%M IST\')}")',
+        '    try:',
+        '        intra = yf.download(list(active_ticker_map.keys()), period="1d", interval="5m", auto_adjust=True, progress=False)',
+        '        if not intra.empty and "Close" in intra:',
+        '            intra_close = intra["Close"]',
+        '            if isinstance(intra_close, pd.Series):',
+        '                intra_close = intra_close.to_frame(name=list(active_ticker_map.keys())[0])',
+        '            intra_close = intra_close.rename(columns=active_ticker_map)',
+        '            idx = pd.to_datetime(intra_close.index)',
+        '            if idx.tz is None:',
+        '                idx = idx.tz_localize("UTC")',
+        '            intra_close.index = idx.tz_convert("Asia/Kolkata")',
+        '            live_date = intra_close.index[-1].strftime("%Y-%m-%d")',
+        '            latest_row = intra_close.ffill().iloc[-1]',
+        '            if ((in_session and live_date == today_str) or (live_date > closes.index[-1])) and pd.notna(latest_row.get("NIFTY 50")):',
+        '                for col in valid_cols:',
+        '                    val = latest_row.get(col)',
+        '                    if pd.notna(val):',
+        '                        closes.loc[live_date, col] = float(val)',
+        '                closes = closes.sort_index()',
+        '                print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime(\'%H:%M IST\')}")',
+        '    except Exception as exc:',
+        '        print(f"Intraday 5m merge skipped: {exc}")',
         '',
         '    closes = closes[valid_cols].ffill().dropna(subset=["NIFTY 50"]).round(2)',
         '    closes.to_csv("eod_data.csv")',
@@ -1663,7 +1667,7 @@
         meta: null,
         sourceMode: 'demo',  // 'live' | 'demo' | 'upload'
         benchmark: 'NIFTY 50',
-        timeframe: 'daily',  // 'daily' | 'weekly'
+        timeframe: 'daily21', // 'daily14' | 'daily21' | 'weekly'
         category: 'all',     // 'all' | 'mcap' | 'core' | 'theme' | 'broad'
         quadrantFilter: null,
         search: '',
@@ -1687,7 +1691,11 @@
           if (!raw) return;
           var p = JSON.parse(raw);
           if (p.benchmark === 'NIFTY 50' || p.benchmark === 'NIFTY 500') state.benchmark = p.benchmark;
-          if (p.timeframe === 'daily' || p.timeframe === 'weekly') state.timeframe = p.timeframe;
+          if (p.timeframe === 'daily14' || p.timeframe === 'daily21' || p.timeframe === 'weekly') {
+            state.timeframe = p.timeframe;
+          } else if (p.timeframe === 'daily') {
+            state.timeframe = 'daily21';
+          }
           if (['all', 'mcap', 'core', 'theme', 'broad'].indexOf(p.category) !== -1) state.category = p.category;
           if (typeof p.tailLen === 'number' && p.tailLen >= 3 && p.tailLen <= 15) state.tailLen = p.tailLen;
           if (typeof p.dimUnfocused === 'boolean') state.dimUnfocused = p.dimUnfocused;
@@ -2032,7 +2040,7 @@
         if (!bench) return null;
 
         var n = dates.length;
-        var win = timeframe === 'weekly' ? 10 : 14;
+        var win = timeframe === 'weekly' ? 10 : (timeframe === 'daily14' ? 14 : 21);
         var items = {};
 
         Object.keys(data.series).forEach(function (key) {
@@ -2076,6 +2084,7 @@
           items[key] = {
             key: key,
             meta: meta,
+            dates: dates,
             prices: prices,
             rsr: rsr,
             rsm: rsm,
@@ -2128,7 +2137,13 @@
         var emaDist = (isFinite(price) && isFinite(ema) && ema > 0) ? ((price / ema) - 1) * 100 : NaN;
 
         var isW = timeframe === 'weekly';
-        var r1d = pctReturn(item.prices, idx, 1);
+        var r1d;
+        if (isW && item.dates && state.rawSeries[item.key]) {
+          var rawIdx = state.rawDates.indexOf(item.dates[idx]);
+          r1d = rawIdx > 0 ? pctReturn(state.rawSeries[item.key], rawIdx, 1) : NaN;
+        } else {
+          r1d = pctReturn(item.prices, idx, 1);
+        }
         var r1w = pctReturn(item.prices, idx, isW ? 1 : 5);
         var r1m = pctReturn(item.prices, idx, isW ? 4 : 21);
         var r3m = pctReturn(item.prices, idx, isW ? 13 : 63);
@@ -2162,7 +2177,8 @@
          7. TRADE REGIME METER (4 CHECKS + INDIA VIX GUARD)
          ===================================================================== */
       function renderTradeRegime() {
-        var dailyModel = computeRRGModel(state.benchmark, 'daily');
+        var dailyTf = state.timeframe === 'daily14' ? 'daily14' : 'daily21';
+        var dailyModel = computeRRGModel(state.benchmark, dailyTf);
         var weeklyModel = computeRRGModel(state.benchmark, 'weekly');
         if (!dailyModel || !dailyModel.dates.length) return;
 
@@ -2196,15 +2212,17 @@
         });
 
         var dailySnaps = Object.keys(dailyModel.items).map(function (k) {
-          return snapshotItem(dailyModel.items[k], dIdx, 'daily');
+          return snapshotItem(dailyModel.items[k], dIdx, dailyTf);
         }).filter(Boolean);
 
         var coreSnaps = dailySnaps.filter(function (s) { return s.meta.cat === 'core'; });
         var coreAbove = coreSnaps.filter(function (s) { return s.aboveEma; }).length;
         var coreTotal = coreSnaps.length;
 
-        var c1Score = (mcapAbove >= 4 && coreAbove >= Math.ceil(coreTotal * 0.55)) ? 2
-          : (mcapAbove >= 2 || coreAbove >= Math.ceil(coreTotal * 0.4)) ? 1 : 0;
+        var mcapPassNeed = mcapTotal > 0 ? Math.ceil(mcapTotal * 0.75) : 1;
+        var mcapWarnNeed = mcapTotal > 0 ? Math.max(1, Math.floor(mcapTotal * 0.4)) : 1;
+        var c1Score = (mcapAbove >= mcapPassNeed && coreAbove >= Math.ceil(coreTotal * 0.55)) ? 2
+          : (mcapAbove >= mcapWarnNeed || coreAbove >= Math.ceil(coreTotal * 0.4)) ? 1 : 0;
         var c1Tag = c1Score === 2 ? 'pass' : (c1Score === 1 ? 'warn' : 'fail');
         var c1Desc = mcapAbove + '/' + mcapTotal + ' Cap tiers & ' + coreAbove + '/' + coreTotal + ' Core Sectors above 10-EMA.';
 
@@ -2247,8 +2265,8 @@
         var c4Score = (dailyTop.length && synced >= Math.ceil(dailyTop.length * 0.65)) ? 2
           : (synced >= 2 ? 1 : 0);
         var c4Tag = c4Score === 2 ? 'pass' : (c4Score === 1 ? 'warn' : 'fail');
-        var c4Desc = synced + '/' + dailyTop.length + ' top Daily leaders confirmed on Weekly Fri trend.';
-
+        var dailyLabel = dailyTf === 'daily14' ? 'Daily 14d' : 'Daily 21d';
+        var c4Desc = synced + '/' + dailyTop.length + ' top ' + dailyLabel + ' leaders confirmed on Weekly Fri trend.';
         var totalScore = c1Score + c2Score + c3Score + c4Score;
 
         // India VIX Guard
@@ -2319,6 +2337,8 @@
          ===================================================================== */
       function renderMcapStrip() {
         var benchKey = state.rawSeries['NIFTY 500'] ? 'NIFTY 500' : state.benchmark;
+        var benchBadge = document.getElementById('mcap-bench-badge');
+        if (benchBadge) benchBadge.textContent = 'Ranked vs ' + benchKey;
         var mcapModel = computeRRGModel(benchKey, state.timeframe);
         var grid = document.getElementById('mcap-grid');
         var hint = document.getElementById('mcap-focus-hint');
@@ -2387,9 +2407,10 @@
       function renderFreshCrossovers(allModelSnaps) {
         var lbl = document.getElementById('cross-label');
         var wrap = document.getElementById('cross-chips');
-        lbl.textContent = state.timeframe === 'weekly' ? 'Fresh Shifts This Week:' : 'Fresh Shifts Today:';
-
-        var shifted = allModelSnaps.filter(function (s) { return s.shifted; });
+        lbl.textContent = state.timeframe === 'weekly'
+          ? 'Fresh Shifts This Week:'
+          : ('Fresh Shifts Today (' + (state.timeframe === 'daily14' ? '14d' : '21d') + '):');
+        var shifted = (allModelSnaps || []).filter(function (s) { return s.shifted; });
         if (!shifted.length) {
           wrap.innerHTML = '<span class="section-sub">No fresh quadrant crossovers on this bar.</span>';
           return;
@@ -2397,9 +2418,9 @@
 
         wrap.innerHTML = shifted.map(function (s) {
           var isBull = s.quadrant === 'Leading' || s.quadrant === 'Improving';
-          return '<button type="button" class="cross-chip ' + (isBull ? 'bull' : 'bear') + '" data-key="' + s.key + '">' +
+          return '<button type="button" class="cross-chip ' + (isBull ? 'bull' : 'bear') + '" data-key="' + escHtml(s.key) + '">' +
             '<span style="width:7px;height:7px;border-radius:50%;background:' + s.meta.color + ';"></span>' +
-            '<strong>' + s.meta.short + '</strong>' +
+            '<strong>' + escHtml(s.meta.short) + '</strong>' +
             '<span style="color:var(--text-3);">' + s.prevQuadrant + ' &rarr;</span>' +
             '<span style="color:' + QUADRANT_COLORS[s.quadrant] + ';font-weight:700;">' + s.quadrant + '</span>' +
           '</button>';
@@ -2488,7 +2509,7 @@
           var items = catSnaps.filter(function (s) { return s.quadrant === q.id; });
           var pct = Math.round((items.length / total) * 100);
           var chips = items.slice(0, 4).map(function (s) {
-            return '<span class="mini-chip"><span style="width:6px;height:6px;border-radius:50%;background:' + s.meta.color + ';"></span>' + s.meta.short + '</span>';
+            return '<span class="mini-chip"><span style="width:6px;height:6px;border-radius:50%;background:' + s.meta.color + ';"></span>' + escHtml(s.meta.short) + '</span>';
           }).join('');
           if (items.length > 4) chips += '<span class="mini-chip">+' + (items.length - 4) + '</span>';
           var activeCls = state.quadrantFilter === q.id ? ('active-q-' + q.id) : '';
@@ -2527,7 +2548,7 @@
 
         tip.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">' +
-            '<strong style="font-size:12px;">' + snap.key + '</strong>' +
+            '<strong style="font-size:12px;">' + escHtml(snap.key) + '</strong>' +
             '<span class="q-pill q-' + snap.quadrant + '" style="font-size:10px;padding:1px 6px;">' + snap.quadrant + '</span>' +
           '</div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-family:var(--mono);font-size:11px;color:var(--text-2);">' +
@@ -2563,9 +2584,9 @@
 
         var leg = document.getElementById('legend-chips');
         leg.innerHTML = plottedSnaps.map(function (s) {
-          return '<button type="button" class="legend-chip ' + (s.key === state.selectedKey ? 'selected' : '') + '" data-key="' + s.key + '">' +
+          return '<button type="button" class="legend-chip ' + (s.key === state.selectedKey ? 'selected' : '') + '" data-key="' + escHtml(s.key) + '">' +
             '<span style="width:7px;height:7px;border-radius:50%;background:' + s.meta.color + ';"></span>' +
-            '<span>' + s.meta.short + '</span>' +
+            '<span>' + escHtml(s.meta.short) + '</span>' +
           '</button>';
         }).join('');
         leg.querySelectorAll('.legend-chip').forEach(function (c) {
@@ -2638,7 +2659,11 @@
           return aSel - bSel;
         });
 
-        var activeFocus = state.hoveredKey || (state.dimUnfocused ? state.selectedKey : null);
+        var snapMap = {};
+        plottedSnaps.forEach(function (s) { snapMap[s.key] = s; });
+
+        var rawFocus = state.hoveredKey || (state.dimUnfocused ? state.selectedKey : null);
+        var activeFocus = (rawFocus && snapMap[rawFocus]) ? rawFocus : null;
 
         trails.forEach(function (tr) {
           var s = tr.snap;
@@ -2655,7 +2680,7 @@
           var polyStr = mapped.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
           var head = mapped[mapped.length - 1];
 
-          parts.push('<g class="rrg-node-group" data-key="' + s.key + '" style="cursor:pointer;opacity:' + opacity + ';transition:opacity 0.14s ease;">');
+          parts.push('<g class="rrg-node-group" data-key="' + escHtml(s.key) + '" style="cursor:pointer;opacity:' + opacity + ';transition:opacity 0.14s ease;">');
           if (mapped.length > 1) {
             parts.push('<polyline points="' + polyStr + '" fill="none" stroke="transparent" stroke-width="12" />');
             parts.push('<polyline points="' + polyStr + '" fill="none" stroke="' + col + '" stroke-width="' + (isSelected || isHovered ? 2.8 : 1.8) + '" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.85" />');
@@ -2675,17 +2700,15 @@
           var ly = head.y + 3;
           var anchor = 'start';
           if (lx > W - 85) { lx = head.x - 8; anchor = 'end'; }
-          parts.push('<text class="rrg-label" data-always="' + (showLabel ? '1' : '0') + '" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#f8fafc" font-size="' + (isSelected || isHovered ? 11 : 10) + '" font-weight="' + (isSelected || isHovered ? 800 : 600) + '" text-anchor="' + anchor + '" style="paint-order:stroke;stroke:#060b14;stroke-width:3px;' + (showLabel ? '' : 'display:none;') + '">' + s.meta.short + '</text>');
+          parts.push('<text class="rrg-label" data-always="' + (showLabel ? '1' : '0') + '" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#f8fafc" font-size="' + (isSelected || isHovered ? 11 : 10) + '" font-weight="' + (isSelected || isHovered ? 800 : 600) + '" text-anchor="' + anchor + '" style="paint-order:stroke;stroke:#060b14;stroke-width:3px;' + (showLabel ? '' : 'display:none;') + '">' + escHtml(s.meta.short) + '</text>');
           parts.push('</g>');
         });
 
         svg.innerHTML = parts.join('');
 
-        var snapMap = {};
-        plottedSnaps.forEach(function (s) { snapMap[s.key] = s; });
-
         function applyHoverHighlight(hoverKey) {
-          var focus = hoverKey || (state.dimUnfocused ? state.selectedKey : null);
+          var rawFocus = hoverKey || (state.dimUnfocused ? state.selectedKey : null);
+          var focus = (rawFocus && snapMap[rawFocus]) ? rawFocus : null;
           svg.querySelectorAll('.rrg-node-group').forEach(function (node) {
             var k = node.getAttribute('data-key');
             var isSel = k === state.selectedKey;
@@ -2805,7 +2828,7 @@
         var cWrap = document.getElementById('insp-constituents');
         var list = snap.meta.constituents || [];
         cWrap.innerHTML = list.map(function (c) {
-          return '<button type="button" class="stock-chip" data-copy="' + c + '">' + c + '</button>';
+          return '<button type="button" class="stock-chip" data-copy="' + escHtml(c) + '">' + escHtml(c) + '</button>';
         }).join('');
         cWrap.querySelectorAll('.stock-chip').forEach(function (btn) {
           btn.addEventListener('click', function () {
@@ -2849,6 +2872,14 @@
         var col = state.sortCol;
         var mult = state.sortDir === 'asc' ? 1 : -1;
 
+        document.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+          if (!th.getAttribute('data-label')) th.setAttribute('data-label', th.textContent.trim());
+          var base = th.getAttribute('data-label');
+          var isCur = th.getAttribute('data-sort') === col;
+          th.textContent = isCur ? (base + (state.sortDir === 'asc' ? ' \u25b2' : ' \u25bc')) : base;
+          th.style.color = isCur ? '#e0f2fe' : '';
+        });
+
         rows.sort(function (a, b) {
           if (col === 'name') return a.key.localeCompare(b.key) * mult;
           if (col === 'quadrant') return a.quadrant.localeCompare(b.quadrant) * mult;
@@ -2868,8 +2899,8 @@
         body.innerHTML = rows.map(function (s) {
           var selCls = s.key === state.selectedKey ? 'selected-row' : '';
           var newTag = s.shifted ? '<span class="new-badge">NEW</span>' : '';
-          return '<tr class="' + selCls + '" data-key="' + s.key + '">' +
-            '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + s.meta.color + ';margin-right:7px;"></span><strong>' + s.key + '</strong>' + newTag + '</td>' +
+          return '<tr class="' + selCls + '" data-key="' + escHtml(s.key) + '">' +
+            '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + s.meta.color + ';margin-right:7px;"></span><strong>' + escHtml(s.key) + '</strong>' + newTag + '</td>' +
             '<td><span class="q-pill q-' + s.quadrant + '">' + s.quadrant + '</span></td>' +
             '<td>' + s.rsr.toFixed(2) + '</td>' +
             '<td>' + s.rsm.toFixed(2) + '</td>' +
@@ -2913,7 +2944,8 @@
         document.getElementById('tail-slider').value = state.tailLen;
         document.getElementById('tail-val').textContent = state.tailLen;
 
-        document.getElementById('rrg-subtitle-pill').textContent = (state.timeframe === 'weekly' ? 'Weekly Fri' : 'Daily EOD') + ' \u00b7 ' + state.tailLen + '-Period Tail';
+        var tfLabel = state.timeframe === 'weekly' ? 'Weekly Fri (10w)' : (state.timeframe === 'daily14' ? 'Daily 14d' : 'Daily 21d');
+        document.getElementById('rrg-subtitle-pill').textContent = tfLabel + ' \u00b7 ' + state.tailLen + '-Period Tail';
         document.getElementById('rrg-bench-label').textContent = state.benchmark;
 
         var clearQ = document.getElementById('btn-clear-q');
@@ -2935,6 +2967,10 @@
         }).filter(Boolean).sort(function (a, b) { return b.score - a.score; });
         allModelSnaps.forEach(function (s, i) { s.rank = i + 1; });
 
+        if (allModelSnaps.length && !allModelSnaps.some(function (s) { return s.key === state.selectedKey; })) {
+          state.selectedKey = allModelSnaps[0].key;
+        }
+
         var catSnaps = getFilteredSnapshots(model, idx, true);
         var plottedSnaps = getFilteredSnapshots(model, idx, false);
 
@@ -2946,6 +2982,14 @@
         renderRRG(model, idx, plottedSnaps);
         renderInspector(model, idx, allModelSnaps);
         renderLeaderboard(plottedSnaps);
+      }
+
+      function escHtml(str) {
+        return String(str == null ? '' : str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
       }
 
       function fmtPct(v) {
@@ -2963,27 +3007,18 @@
       }
 
       function copyText(text, msg) {
-        function fallbackCopy() {
-          try {
-            var ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            showToast(msg || 'Copied to clipboard', 'success');
-          } catch (e) {
-            showToast('Copy failed', 'error');
-          }
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function () {
-            showToast(msg || 'Copied to clipboard', 'success');
-          }).catch(fallbackCopy);
-        } else {
-          fallbackCopy();
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast(msg || 'Copied to clipboard', 'success');
+        } catch (e) {
+          showToast('Copy failed', 'error');
         }
       }
 
@@ -3021,10 +3056,10 @@
           var cm = CATEGORY_META[u.cat] || CATEGORY_META.theme;
           var role = u.isBenchmark ? 'Benchmark' : (u.isVolatility ? 'Volatility' : cm.label);
           return '<tr>' +
-            '<td><strong>' + u.key + '</strong></td>' +
-            '<td><button type="button" class="stock-chip" data-copy="' + u.ticker + '">' + u.ticker + '</button></td>' +
-            '<td><span class="cat-tag ' + cm.cls + '">' + role + '</span></td>' +
-            '<td style="text-align:left;font-family:var(--font);color:var(--text-2);white-space:normal;">' + (u.constituents || []).join(', ') + '</td>' +
+            '<td><strong>' + escHtml(u.key) + '</strong></td>' +
+            '<td><button type="button" class="stock-chip" data-copy="' + escHtml(u.ticker) + '">' + escHtml(u.ticker) + '</button></td>' +
+            '<td style="text-align:left;"><span class="cat-tag ' + cm.cls + '">' + role + '</span></td>' +
+            '<td style="text-align:left;font-family:var(--font);color:var(--text-2);white-space:normal;">' + escHtml((u.constituents || []).join(', ')) + '</td>' +
           '</tr>';
         }).join('');
         body.querySelectorAll('.stock-chip').forEach(function (b) {
@@ -3071,6 +3106,7 @@
 
         document.querySelectorAll('#tf-group .seg-btn').forEach(function (btn) {
           btn.addEventListener('click', function () {
+            if (state.playing) togglePlay();
             state.timeframe = btn.getAttribute('data-tf');
             state.frameOffset = 0;
             savePrefs();
@@ -3119,6 +3155,7 @@
         });
 
         document.getElementById('btn-reset-view').addEventListener('click', function () {
+          if (state.playing) togglePlay();
           state.category = 'all';
           state.quadrantFilter = null;
           state.search = '';
@@ -3182,6 +3219,7 @@
             lines.push([s.key, s.quadrant, s.rsr.toFixed(2), s.rsm.toFixed(2), isFinite(s.emaDist) ? s.emaDist.toFixed(2) : '', isFinite(s.r1d) ? s.r1d.toFixed(2) : '', isFinite(s.r1w) ? s.r1w.toFixed(2) : '', isFinite(s.r1m) ? s.r1m.toFixed(2) : '', isFinite(s.r3m) ? s.r3m.toFixed(2) : '', s.days].join(','));
           });
           downloadFile('nse_rotation_leaderboard.csv', lines.join('\n'), 'text/csv');
+          showToast('Exported ' + snaps.length + ' rows to CSV', 'success');
         });
 
         document.getElementById('btn-modal').addEventListener('click', function () {
