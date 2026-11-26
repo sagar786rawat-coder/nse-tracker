@@ -10,12 +10,12 @@
      * Obsidian/Slate palette, crisp borders, tabular monospace financials
      * ===================================================================== */
     :root {
-      --bg-base: #0b0f17;
-      --bg-card: #111827;
-      --bg-card-translucent: rgba(17, 24, 39, 0.92);
-      --bg-elevated: #182235;
-      --bg-inset: #0d1320;
-      --border-default: #1f2937;
+      --bg-base: #090d16;
+      --bg-card: #101726;
+      --bg-card-translucent: rgba(16, 23, 38, 0.94);
+      --bg-elevated: #172136;
+      --bg-inset: #0b1120;
+      --border-default: #1e293b;
       --border-strong: #334155;
 
       --text-primary: #f3f4f6;
@@ -200,15 +200,33 @@
       border-color: var(--q-leading-border);
       color: var(--q-leading-text);
     }
-    .sync-pill.demo {
+    .sync-pill.preclose {
       background: var(--q-weakening-bg);
       border-color: var(--q-weakening-border);
       color: var(--q-weakening-text);
+    }
+    .sync-pill.demo {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(148, 163, 184, 0.36);
+      color: #cbd5e1;
     }
     .sync-pill.syncing {
       background: var(--accent-sky-bg);
       border-color: var(--accent-sky-border);
       color: #7dd3fc;
+    }
+
+    @keyframes syncPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.72);
+      }
+      50% {
+        transform: scale(1.18);
+        opacity: 0.78;
+        box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
+      }
     }
 
     .sync-dot {
@@ -221,9 +239,13 @@
       background: #10b981;
       box-shadow: 0 0 8px rgba(16, 185, 129, 0.85);
     }
-    .sync-pill.demo .sync-dot {
+    .sync-pill.preclose .sync-dot {
       background: #f59e0b;
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.80);
+      animation: syncPulse 1.8s ease-in-out infinite;
+    }
+    .sync-pill.demo .sync-dot {
+      background: #60a5fa;
+      box-shadow: 0 0 8px rgba(96, 165, 250, 0.75);
     }
     .sync-pill.syncing .sync-dot {
       background: #38bdf8;
@@ -1317,7 +1339,7 @@
         <div>
           <h1 class="brand-title">NSE Sector &amp; Theme Rotation Tracker</h1>
           <div class="brand-subrow">
-            <button id="sync-status-pill" class="sync-pill syncing" title="Open GitHub Auto-Sync &amp; Data settings">
+            <button id="sync-status-pill" class="sync-pill syncing" title="Automated GitHub Actions sync runs twice every weekday: 3:00 PM IST (Pre-Close Live snapshot) and 4:15 PM IST (EOD Final official close). Click to inspect or customize sync settings.">
               <span class="sync-dot"></span>
               <span id="sync-status-text">Checking ./eod_data.csv...</span>
             </button>
@@ -1388,7 +1410,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
-          <input id="global-search" class="text-input" type="text" placeholder="Search index, ETF proxy, or stock (e.g. HAL, BSE, GOLD)..." />
+          <input id="global-search" class="text-input" type="text" placeholder="Search index, ETF proxy, or stock (e.g. HAL, BSE, GOLDBEES)..." />
         </div>
 
         <button id="btn-dim-unfocused" class="btn btn-sm btn-ghost" title="Dim all trails except the selected index for uncluttered focus">
@@ -1515,7 +1537,7 @@
               <span id="animate-label">Animate</span>
             </button>
             <input id="date-scrubber" class="rrg-slider" type="range" min="0" max="29" value="29" style="flex:1;min-width:95px;" aria-label="Replay rotation across last 30 periods" />
-            <span id="scrubber-date" class="mono" style="color:#f3f4f6;font-weight:600;white-space:nowrap;">20 Nov 2026</span>
+            <span id="scrubber-date" class="mono" style="color:#f3f4f6;font-weight:600;white-space:nowrap;">26 Nov 2026</span>
           </div>
         </div>
 
@@ -1569,7 +1591,7 @@
           <div class="inset-box">
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);">
               <span>Quadrant Shift (<span id="insp-prev-label">Prev Session</span>)</span>
-              <span id="insp-date" class="mono">20 Nov 2026</span>
+              <span id="insp-date" class="mono">26 Nov 2026</span>
             </div>
             <div class="transition-row">
               <span id="insp-prev-quad" class="pill pill-Improving">Improving</span>
@@ -1780,13 +1802,22 @@
       <!-- TAB 2: GITHUB AUTO-SYNC SETUP -->
       <div id="tab-panel-github" class="modal-body hidden">
         <div class="info-banner">
-          <strong style="color:#7dd3fc;">Zero-Cost Automated Daily Sync (4:15 PM IST Mon–Fri):</strong> Put <span class="mono" style="color:#fff;">index.html</span>, <span class="mono" style="color:#fff;">fetch_eod.py</span>, and <span class="mono" style="color:#fff;">.github/workflows/update-eod.yml</span> in a public GitHub repo and enable GitHub Pages. Actions refreshes <span class="mono" style="color:#fff;">eod_data.csv</span> every weekday after market close.
+          <strong style="color:#7dd3fc;">Zero-Cost Automated Pre-Close &amp; EOD Sync (Mon–Fri):</strong> GitHub Actions updates both <span class="mono" style="color:#fff;">eod_data.csv</span> and <span class="mono" style="color:#fff;">last_updated.json</span> twice daily — <strong style="color:#fcd34d;">3:00 PM IST (Pre-Close Live)</strong> and <strong style="color:#6ee7b7;">4:15 PM IST (EOD Final)</strong> — so your tracker stays noise-free during midday chop while staying ready before the closing bell.
+        </div>
+
+        <!-- Detected last_updated.json Metadata Status -->
+        <div id="modal-meta-status-box" class="inset-box" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div class="metric-label">Detected Sync Metadata (<span class="mono">last_updated.json</span>)</div>
+            <div id="modal-meta-detail" class="mono" style="margin-top:4px;font-size:11.5px;color:#e5e7eb;">Checking sync status...</div>
+          </div>
+          <span id="modal-meta-pill" class="pill pill-blue mono">Checking...</span>
         </div>
 
         <!-- Custom Raw GitHub CSV URL Input + Save & Test -->
         <div class="inset-box" style="display:flex;flex-direction:column;gap:9px;">
           <label for="custom-csv-url" style="font-weight:600;color:#e5e7eb;">
-            Custom GitHub Raw CSV URL <span style="color:var(--text-muted);font-weight:400;">(Optional — saved in localStorage)</span>
+            Custom GitHub Raw CSV URL <span style="color:var(--text-muted);font-weight:400;">(Optional — saved in localStorage; auto-checks sibling last_updated.json)</span>
           </label>
           <input
             id="custom-csv-url"
@@ -1799,7 +1830,7 @@
               Also supports <span class="mono" style="color:#d1d5db;">?csv=https://...</span> in the browser URL.
             </span>
             <div style="display:flex;gap:8px;">
-              <button id="btn-reset-csv-url" class="btn btn-sm btn-ghost">Reset to ./eod_data.csv</button>
+              <button id="btn-reset-csv-url" class="btn btn-sm btn-ghost">Reset to Local ./eod_data.csv</button>
               <button id="btn-save-test-url" class="btn btn-sm btn-emerald">Save &amp; Test</button>
             </div>
           </div>
@@ -1810,7 +1841,7 @@
         <!-- Ready-to-use fetch_eod.py (Copy + Download) -->
         <details class="code-disclosure" open>
           <summary>
-            <span>📄 <span class="mono">fetch_eod.py</span> — All 28 Active Tickers, ffill() Only, Health Summary</span>
+            <span>📄 <span class="mono">fetch_eod.py</span> — 28 Tickers, ^CRSLDX + ETF Fallbacks, 5m Pre-Close Merge &amp; last_updated.json</span>
             <div style="display:flex;gap:6px;">
               <button type="button" id="btn-copy-py" class="btn btn-sm btn-ghost">Copy</button>
               <button type="button" id="btn-dl-py" class="btn btn-sm btn-primary">Download fetch_eod.py</button>
@@ -1824,7 +1855,7 @@
         <!-- Ready-to-use .github/workflows/update-eod.yml (Copy + Download) -->
         <details class="code-disclosure">
           <summary>
-            <span>⚙️ <span class="mono">.github/workflows/update-eod.yml</span> — 4:15 PM IST Cron + Holiday Guard</span>
+            <span>⚙️ <span class="mono">.github/workflows/update-eod.yml</span> — 3:00 PM Pre-Close &amp; 4:15 PM EOD Final (CSV + JSON)</span>
             <div style="display:flex;gap:6px;">
               <button type="button" id="btn-copy-yml" class="btn btn-sm btn-ghost">Copy</button>
               <button type="button" id="btn-dl-yml" class="btn btn-sm btn-primary">Download update-eod.yml</button>
@@ -1896,7 +1927,7 @@
 
       const BENCHMARK_DEFS = [
         { id: 'NIFTY 50', ticker: '^NSEI', category: 'benchmark', notes: 'Primary NSE Large-Cap Benchmark (50 stocks)' },
-        { id: 'NIFTY 500', ticker: '^CNX500', category: 'benchmark', notes: 'Broad NSE Market Benchmark (500 stocks)' }
+        { id: 'NIFTY 500', ticker: '^CRSLDX', category: 'benchmark', notes: 'Broad NSE Market Benchmark (500 stocks · Fallback: MONIFTY500.NS)' }
       ];
 
       const PRECONFIGURED_SERIES = [
@@ -1970,13 +2001,13 @@
         },
         {
           id: 'NIFTY IPO', short: 'IPO', ticker: 'SELECTIPO.NS', category: 'theme', isEtfProxy: true, color: '#d946ef',
-          basePrice: 100.0, constituents: ['ETERNAL', 'SWIGGY', 'BAJAJHFL', 'HYUNDAI', 'WAAREEENER'],
+          basePrice: 100.0, constituents: ['ETERNAL', 'SWIGGY', 'HYUNDAI', 'BAJAJHFL', 'WAAREEENER'],
           startDate: '2025-03-03', // Realistic partial history starting Mar 2025
           phase: 0.15, freq: 0.050, amp: 0.104, drift: 0.00045, vol: 0.0118
         },
         {
           id: 'NIFTY CAPITAL MKTS', short: 'CAPMKTS', ticker: 'MOCAPITAL.NS', category: 'theme', isEtfProxy: true, color: '#22c55e',
-          basePrice: 44.2, constituents: ['BSE', 'CDSL', 'MCX', 'HDFCAMC', 'ANGELONE'],
+          basePrice: 44.2, constituents: ['BSE', 'MCX', 'CDSL', 'ANGELONE', 'CAMS'],
           phase: 0.68, freq: 0.048, amp: 0.112, drift: 0.00052, vol: 0.0120
         },
         {
@@ -1991,7 +2022,7 @@
         },
         {
           id: 'NIFTY RAILWAYS', short: 'RAILWAYS', ticker: 'GROWWRAIL.NS', category: 'theme', isEtfProxy: true, color: '#f43f5e',
-          basePrice: 10.4, constituents: ['IRFC', 'RVNL', 'IRCTC', 'CONCOR', 'TITAGARH'],
+          basePrice: 10.4, constituents: ['IRFC', 'RVNL', 'IRCTC', 'RAILTEL', 'TITAGARH'],
           startDate: '2025-02-03', // Realistic partial history starting Feb 2025
           phase: 4.55, freq: 0.049, amp: 0.118, drift: 0.00022, vol: 0.0128
         },
@@ -2050,6 +2081,13 @@
         HEADER_ALIASES[s.id.toUpperCase()] = s.id;
       });
       HEADER_ALIASES['^CNXFINANCE'] = 'NIFTY FIN SERVICE';
+      HEADER_ALIASES['^CNX500'] = 'NIFTY 500';
+      HEADER_ALIASES['^CRSLDX'] = 'NIFTY 500';
+      HEADER_ALIASES['MONIFTY500.NS'] = 'NIFTY 500';
+      HEADER_ALIASES['PHARMABEES.NS'] = 'NIFTY PHARMA';
+      HEADER_ALIASES['METALIETF.NS'] = 'NIFTY METAL';
+      HEADER_ALIASES['ITBEES.NS'] = 'NIFTY IT';
+      HEADER_ALIASES['AUTOBEES.NS'] = 'NIFTY AUTO';
 
       const EXTRA_COLORS = ['#22d3ee', '#a855f7', '#fb923c', '#4ade80', '#f472b6', '#fde047', '#38bdf8', '#e879f9'];
 
@@ -2061,32 +2099,32 @@
 
       const QUADRANT_INFO = {
         Leading: {
-          color: '#10b981',
-          signal: 'Institutional leadership: outperforming the benchmark with positive momentum. Constructive zone for trend-following pullbacks.'
+          signal: 'Strong leadership: outperforming the benchmark with positive momentum. Look for pullbacks toward the 10-EMA for trend continuation.'
         },
         Weakening: {
-          color: '#f59e0b',
-          signal: 'Momentum cooling: still outperforming overall, but relative velocity is decelerating. Tighten trailing stops or watch for rotation out.'
+          signal: 'Outperforming but losing relative momentum. Watch for rotation risk or trail stops tighter if price slips below the 10-EMA.'
         },
         Lagging: {
-          color: '#f43f5e',
           signal: 'Relative weakness: underperforming with negative momentum. Wait for RS-Momentum to curl upward before anticipating a turn.'
         },
         Improving: {
-          color: '#6366f1',
-          signal: 'Early rotation watch: still below 100 RS-Ratio, but momentum has turned positive — watch for a clockwise cross into Leading.'
+          signal: 'Early rotation signal: still underperforming overall, but gaining relative momentum. Monitor for a clockwise breakout into Leading.'
         }
       };
 
-      // Complete, ready-to-use fetch_eod.py with ALL 28 active tickers, ffill() only, and health log
-      const FETCH_EOD_PY = `import pandas as pd
+      // Complete, ready-to-use fetch_eod.py with ^CRSLDX, FALLBACK_TICKERS, 5m Pre-Close merge & last_updated.json
+      const FETCH_EOD_PY = `import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+import pandas as pd
 import yfinance as yf
 
 # Complete 28-column NSE Sector & Theme Rotation Universe
 TICKERS = {
     # Benchmarks (2)
     "^NSEI": "NIFTY 50",
-    "^CNX500": "NIFTY 500",
+    "^CRSLDX": "NIFTY 500",
 
     # Core NSE Sectors (12)
     "^NSEBANK": "NIFTY BANK",
@@ -2121,8 +2159,29 @@ TICKERS = {
     "SILVERBEES.NS": "SILVER ETF",
 }
 
+# Automatic liquid ETF fallbacks if Yahoo skips a raw index ticker
+FALLBACK_TICKERS = {
+    "NIFTY 500": "MONIFTY500.NS",
+    "NIFTY PHARMA": "PHARMABEES.NS",
+    "NIFTY METAL": "METALIETF.NS",
+    "NIFTY IT": "ITBEES.NS",
+    "NIFTY AUTO": "AUTOBEES.NS",
+}
+
 
 def main():
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    today_str = now_ist.strftime("%Y-%m-%d")
+    in_session = (
+        now_ist.weekday() < 5
+        and (
+            (now_ist.hour == 9 and now_ist.minute >= 15)
+            or (10 <= now_ist.hour <= 14)
+            or (now_ist.hour == 15 and now_ist.minute <= 35)
+        )
+    )
+
+    # 1. Pull 2-year daily history
     raw = yf.download(
         list(TICKERS.keys()),
         period="2y",
@@ -2133,51 +2192,102 @@ def main():
     closes = raw["Close"].rename(columns=TICKERS)
     closes.index = pd.to_datetime(closes.index).strftime("%Y-%m-%d")
     closes.index.name = "Date"
+    closes = closes[~closes.index.duplicated(keep="last")].sort_index()
 
-    # Skip any symbol that returned zero data so one bad ticker never crashes the pipeline
+    active_ticker_map = {
+        t: name for t, name in TICKERS.items()
+        if name in closes.columns and closes[name].notna().any()
+    }
+
+    # 2. Fill any skipped index using its liquid ETF fallback
+    for col_name, fb_ticker in FALLBACK_TICKERS.items():
+        if col_name not in closes.columns or closes[col_name].isna().all():
+            fb = yf.download(fb_ticker, period="2y", interval="1d", auto_adjust=True, progress=False)
+            if not fb.empty and "Close" in fb:
+                series = fb["Close"]
+                if isinstance(series, pd.DataFrame):
+                    series = series.iloc[:, 0]
+                series.index = pd.to_datetime(series.index).strftime("%Y-%m-%d")
+                series = series[~series.index.duplicated(keep="last")]
+                closes[col_name] = series
+                active_ticker_map[fb_ticker] = col_name
+                print(f"Used fallback {fb_ticker} for {col_name}")
+
     valid_cols = [c for c in TICKERS.values() if c in closes.columns and closes[c].notna().any()]
-    skipped = [c for c in TICKERS.values() if c not in valid_cols]
-
+    dropped = [c for c in TICKERS.values() if c not in valid_cols]
     if "NIFTY 50" not in valid_cols:
         raise RuntimeError("Benchmark NIFTY 50 (^NSEI) returned no data. Aborting CSV overwrite.")
+    if dropped:
+        print(f"Warning: skipped tickers with no data: {dropped}")
 
-    # Drop only rows where NIFTY 50 did not trade; use ffill() WITHOUT bfill()
-    # so newer ETFs (SELECTIPO.NS, GROWWRAIL.NS) keep leading blanks prior to listing.
+    # 3. Merge live 5m prices during Pre-Close window (or if EOD bar hasn't posted yet)
+    intra = yf.download(
+        list(active_ticker_map.keys()),
+        period="1d",
+        interval="5m",
+        auto_adjust=True,
+        progress=False,
+    )
+    if not intra.empty and "Close" in intra:
+        intra_close = intra["Close"]
+        if isinstance(intra_close, pd.Series):
+            intra_close = intra_close.to_frame(name=list(active_ticker_map.keys())[0])
+        intra_close = intra_close.rename(columns=active_ticker_map)
+
+        idx = pd.to_datetime(intra_close.index)
+        if idx.tz is None:
+            idx = idx.tz_localize("UTC")
+        intra_close.index = idx.tz_convert("Asia/Kolkata")
+
+        live_date = intra_close.index[-1].strftime("%Y-%m-%d")
+        latest_row = intra_close.ffill().iloc[-1]
+
+        if ((in_session and live_date == today_str) or (live_date > closes.index[-1])) and pd.notna(latest_row.get("NIFTY 50")):
+            for col in valid_cols:
+                val = latest_row.get(col)
+                if pd.notna(val):
+                    closes.loc[live_date, col] = float(val)
+            closes = closes.sort_index()
+            print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime('%H:%M IST')}")
+
+    # 4. Forward-fill only (no bfill so newer ETFs preserve leading blank dates)
     closes = closes[valid_cols].dropna(subset=["NIFTY 50"]).ffill().round(2)
     closes.to_csv("eod_data.csv")
 
-    # Summary health log for GitHub Actions output
-    total_days = len(closes)
-    partial_cols = [
-        f"{c} ({int(closes[c].notna().sum())}d)"
-        for c in valid_cols
-        if closes[c].notna().sum() < total_days
-    ]
-    print("=== NSE EOD Sector & Theme Fetch Health Summary ===")
-    print(f"Latest trading date : {closes.index[-1]}")
-    print(f"Total trading days  : {total_days}")
-    print(f"Active columns      : {len(valid_cols)}/{len(TICKERS)}")
-    if partial_cols:
-        print(f"Partial-history ETFs: {', '.join(partial_cols)}")
-    if skipped:
-        print(f"WARNING Skipped     : {', '.join(skipped)}")
+    # 5. Save live sync metadata JSON
+    meta = {
+        "updated_ist": now_ist.strftime("%Y-%m-%d %H:%M IST"),
+        "latest_trading_date": closes.index[-1],
+        "status": "PRE_CLOSE_LIVE" if in_session else "EOD_FINAL",
+        "columns": len(valid_cols),
+    }
+    with open("last_updated.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2)
+
+    print(f"Saved {len(closes)} trading days x {len(valid_cols)} columns through {closes.index[-1]} ({meta['status']})")
 
 
 if __name__ == "__main__":
     main()
 `;
 
-      // Complete, ready-to-use GitHub Actions workflow YAML
-      const WORKFLOW_YML = `name: Update NSE EOD Sector & Theme Data
+      // Complete, ready-to-use 2-run GitHub Actions workflow YAML (3:00 PM IST Pre-Close & 4:15 PM IST EOD Final)
+      const WORKFLOW_YML = `name: Update NSE Sector Data (Pre-Close & EOD)
 
 on:
   schedule:
-    # 10:45 UTC = 4:15 PM IST, Monday to Friday
+    # 3:00 PM IST (09:30 UTC) — Pre-Close snapshot ready by ~3:10-3:15 PM IST
+    - cron: '30 9 * * 1-5'
+    # 4:15 PM IST (10:45 UTC) — Final official NSE closing prices
     - cron: '45 10 * * 1-5'
-  workflow_dispatch: # Trigger manually anytime from the Actions tab
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: nse-data-update
+  cancel-in-progress: false
 
 jobs:
   fetch-eod:
@@ -2194,15 +2304,19 @@ jobs:
       - name: Install dependencies
         run: pip install yfinance pandas
 
-      - name: Fetch NSE closing prices (28 symbols)
+      - name: Fetch NSE prices
         run: python fetch_eod.py
 
-      - name: Commit and push if updated (holiday-safe)
+      - name: Commit and push if updated
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add eod_data.csv
-          git diff --staged --quiet || (git commit -m "Update NSE EOD sector & theme data" && git push)
+          git add eod_data.csv last_updated.json
+          if ! git diff --staged --quiet; then
+            git commit -m "Update NSE sector data"
+            git pull --rebase origin main
+            git push
+          fi
 `;
 
       /* -----------------------------------------------------------------
@@ -2246,9 +2360,9 @@ jobs:
         const rand = mulberry32(20261122);
         const totalDays = 500;
 
-        // 500 Mon-Fri dates ending Friday, 2026-11-20
+        // 500 Mon-Fri dates ending Thursday, 2026-11-26
         const dates = [];
-        const cursor = new Date(2026, 10, 20);
+        const cursor = new Date(2026, 10, 26);
         while (dates.length < totalDays) {
           const dow = cursor.getDay();
           if (dow !== 0 && dow !== 6) {
@@ -2782,7 +2896,8 @@ jobs:
         sortDir: 'desc',
         searchQuery: '',
         tableSearchQuery: '',
-        activeTab: 'upload'
+        activeTab: 'upload',
+        syncMeta: null
       };
 
       function getCurrentModel() {
@@ -2847,7 +2962,7 @@ jobs:
       }
 
       /* -----------------------------------------------------------------
-       * 7. STARTUP AUTO-FETCH & GITHUB SYNC CONTROLLER
+       * 7. STARTUP AUTO-FETCH & GITHUB SYNC CONTROLLER (CSV + METADATA)
        * ----------------------------------------------------------------- */
       function resolveActiveCsvConfig() {
         try {
@@ -2864,6 +2979,21 @@ jobs:
         return { url: DEFAULT_CSV_PATH, label: 'GitHub CSV' };
       }
 
+      function deriveSiblingMetaUrl(csvUrl) {
+        if (!csvUrl || csvUrl === DEFAULT_CSV_PATH) return './last_updated.json';
+        try {
+          const parsedUrl = new URL(csvUrl, window.location.href);
+          parsedUrl.pathname = parsedUrl.pathname.replace(/[^/]*$/, 'last_updated.json');
+          parsedUrl.search = '';
+          parsedUrl.hash = '';
+          return parsedUrl.toString();
+        } catch (_) {
+          const clean = String(csvUrl).split('?')[0].split('#')[0];
+          const idx = clean.lastIndexOf('/');
+          return idx >= 0 ? `${clean.slice(0, idx + 1)}last_updated.json` : './last_updated.json';
+        }
+      }
+
       function withCacheBuster(url) {
         const sep = url.includes('?') ? '&' : '?';
         return `${url}${sep}t=${Date.now()}`;
@@ -2875,42 +3005,122 @@ jobs:
         document.getElementById('sync-status-text').textContent = text;
       }
 
+      function renderSyncMetaCard() {
+        const detailEl = document.getElementById('modal-meta-detail');
+        const pillEl = document.getElementById('modal-meta-pill');
+        if (!detailEl || !pillEl) return;
+
+        const ds = state.rawDataset;
+        const meta = state.syncMeta;
+
+        if (!ds || ds.mode === 'demo') {
+          const lastDate = ds ? ds.dates[ds.dates.length - 1] : '2026-11-26';
+          detailEl.textContent = `Offline / preview fallback active · Latest simulated bar: ${lastDate} (${ds ? ds.dates.length : 500} days)`;
+          pillEl.className = 'pill pill-blue mono';
+          pillEl.textContent = 'Demo Mode';
+          return;
+        }
+
+        if (meta && meta.status) {
+          const isPreClose = meta.status === 'PRE_CLOSE_LIVE' || meta.status === 'LIVE_INTRADAY';
+          detailEl.textContent = `Updated: ${meta.updated_ist || '--'} · Trading Date: ${meta.latest_trading_date || ds.dates[ds.dates.length - 1]} · ${meta.columns || (ds.seriesIds.length + ds.benchmarks.length)} cols`;
+          pillEl.className = `pill ${isPreClose ? 'pill-Weakening' : 'pill-Leading'} mono`;
+          pillEl.textContent = meta.status;
+          return;
+        }
+
+        const lastDate = ds.dates[ds.dates.length - 1];
+        detailEl.textContent = `CSV loaded (${lastDate}, ${ds.dates.length} days) · Sibling last_updated.json not found (404) — run updated workflow to generate it.`;
+        pillEl.className = 'pill pill-Leading mono';
+        pillEl.textContent = 'CSV Only';
+      }
+
+      function updateHeaderStatusBadge() {
+        const ds = state.rawDataset;
+        const meta = state.syncMeta;
+        if (!ds) return;
+
+        const lastDate = ds.dates[ds.dates.length - 1];
+        const totalDays = ds.dates.length;
+
+        if (ds.mode === 'demo') {
+          setSyncPill('demo', `Demo Data · ${lastDate} · ${totalDays} days`);
+          renderSyncMetaCard();
+          return;
+        }
+
+        if (meta && (meta.status === 'PRE_CLOSE_LIVE' || meta.status === 'LIVE_INTRADAY')) {
+          const ts = meta.updated_ist || lastDate;
+          setSyncPill('preclose', `Pre-Close Live · ${ts} · ${totalDays} days`);
+        } else if (meta && meta.status === 'EOD_FINAL') {
+          const ts = meta.updated_ist || lastDate;
+          setSyncPill('live', `EOD Final · ${ts} · ${totalDays} days`);
+        } else {
+          setSyncPill('live', `Live Synced · ${lastDate} · ${totalDays} days`);
+        }
+        renderSyncMetaCard();
+      }
+
+      async function fetchSiblingMetaSafe(metaUrl) {
+        try {
+          const res = await fetch(withCacheBuster(metaUrl), { cache: 'no-store' });
+          if (!res.ok) return null;
+          const json = await res.json();
+          if (json && typeof json === 'object' && typeof json.status === 'string') {
+            return json;
+          }
+          return null;
+        } catch (_) {
+          return null;
+        }
+      }
+
       async function autoFetchGitHubCsv({ silentOnFallback = false, explicitUrl = null } = {}) {
         const icon = document.getElementById('sync-now-icon');
         icon.classList.add('spinning');
 
         const cfg = explicitUrl ? { url: explicitUrl, label: 'Custom GitHub CSV' } : resolveActiveCsvConfig();
+        const metaUrl = deriveSiblingMetaUrl(cfg.url);
         setSyncPill('syncing', 'Syncing ./eod_data.csv...');
 
         try {
-          const res = await fetch(withCacheBuster(cfg.url), { cache: 'no-store' });
-          if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${cfg.url}`);
-          const text = await res.text();
-          const parsed = parseDataPayload(text, cfg.label);
+          const [csvResult, metaResult] = await Promise.allSettled([
+            fetch(withCacheBuster(cfg.url), { cache: 'no-store' }).then(async (res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${cfg.url}`);
+              return res.text();
+            }),
+            fetchSiblingMetaSafe(metaUrl)
+          ]);
+
+          if (csvResult.status !== 'fulfilled') {
+            throw csvResult.reason || new Error(`Failed to fetch ${cfg.url}`);
+          }
+
+          const parsed = parseDataPayload(csvResult.value, cfg.label);
+          const fetchedMeta = metaResult.status === 'fulfilled' ? metaResult.value : null;
+
           setPlaying(false);
+          state.syncMeta = fetchedMeta;
           loadDatasetIntoState(parsed);
           renderAll();
+          updateHeaderStatusBadge();
 
           const lastDate = parsed.dates[parsed.dates.length - 1];
-          setSyncPill('live', `Live Synced • ${lastDate} • ${parsed.dates.length} days`);
           if (!silentOnFallback) {
-            showToast(`Synced ${parsed.seriesIds.length} series across ${parsed.dates.length} days through ${lastDate}.`, 'success');
+            const modeNote = fetchedMeta && fetchedMeta.status ? ` (${fetchedMeta.status})` : '';
+            showToast(`Synced ${parsed.seriesIds.length} series across ${parsed.dates.length} days through ${lastDate}${modeNote}.`, 'success');
           }
           icon.classList.remove('spinning');
-          return { ok: true, dataset: parsed };
+          return { ok: true, dataset: parsed, meta: fetchedMeta };
         } catch (err) {
           icon.classList.remove('spinning');
           if (!state.rawDataset) {
             const demo = generateTwoYearDemoDataset();
+            state.syncMeta = null;
             loadDatasetIntoState(demo);
             renderAll();
           }
-          if (state.rawDataset.mode === 'demo') {
-            setSyncPill('demo', 'Demo Data • Simulated 2Y');
-          } else {
-            const lastDate = state.rawDataset.dates[state.rawDataset.dates.length - 1];
-            setSyncPill('live', `Live Synced • ${lastDate} • ${state.rawDataset.dates.length} days`);
-          }
+          updateHeaderStatusBadge();
           if (!silentOnFallback) {
             showToast(`Could not fetch ${cfg.url}. Using ${state.rawDataset.mode === 'demo' ? 'Demo Data' : 'loaded dataset'}.`, 'error');
           }
@@ -4174,6 +4384,7 @@ jobs:
           try {
             document.getElementById('custom-csv-url').value = localStorage.getItem(STORAGE_KEY_URL) || '';
           } catch (_) {}
+          renderSyncMetaCard();
           setActiveModalTab(tab);
           modal.classList.remove('hidden');
         };
@@ -4289,10 +4500,10 @@ jobs:
           try {
             const parsed = parseDataPayload(pasteBox.value, 'Manual Upload');
             setPlaying(false);
+            state.syncMeta = null;
             loadDatasetIntoState(parsed);
             renderAll();
-            const lastDate = parsed.dates[parsed.dates.length - 1];
-            setSyncPill('live', `Live Synced • ${lastDate} • ${parsed.dates.length} days`);
+            updateHeaderStatusBadge();
             closeModal();
             showToast(`Applied ${parsed.seriesIds.length} series across ${parsed.dates.length} days.`, 'success');
           } catch (err) {
@@ -4316,9 +4527,10 @@ jobs:
         document.getElementById('btn-restore-demo').addEventListener('click', () => {
           setPlaying(false);
           const demo = generateTwoYearDemoDataset();
+          state.syncMeta = null;
           loadDatasetIntoState(demo);
           renderAll();
-          setSyncPill('demo', 'Demo Data • Simulated 2Y');
+          updateHeaderStatusBadge();
           closeModal();
           showToast('Loaded built-in 500-day (2Y) simulated NSE dataset.', 'info');
         });
