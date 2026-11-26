@@ -5,11 +5,17 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
 
-# Complete 28-column NSE Sector & Theme Rotation Universe
+# Complete 30-column NSE Market-Cap, Sector & Theme Rotation Universe
 TICKERS = {
     # Benchmarks (2)
     "^NSEI": "NIFTY 50",
     "^CRSLDX": "NIFTY 500",
+
+    # Market-Cap Tiers (4 additional — NIFTY 50 above completes the 5-tier cap ladder vs NIFTY 500)
+    "^CNX100": "NIFTY 100",
+    "JUNIORBEES.NS": "NIFTY NEXT 50",
+    "MID150BEES.NS": "NIFTY MIDCAP 150",
+    "HDFCSML250.NS": "NIFTY SMALLCAP 250",
 
     # Core NSE Sectors (12)
     "^NSEBANK": "NIFTY BANK",
@@ -37,9 +43,7 @@ TICKERS = {
     "CONSUMBEES.NS": "NIFTY CONSUMPTION",
     "TNIDETF.NS": "NIFTY DIGITAL",
 
-    # Broad Market & Risk-Off Metals via ETF Proxies (4)
-    "MID150BEES.NS": "NIFTY MIDCAP 150",
-    "HDFCSML250.NS": "NIFTY SMALLCAP 250",
+    # Risk-Off Precious Metals via ETF Proxies (2)
     "GOLDBEES.NS": "GOLD ETF",
     "SILVERBEES.NS": "SILVER ETF",
 }
@@ -47,6 +51,7 @@ TICKERS = {
 # Automatic liquid ETF fallbacks if Yahoo skips a raw index ticker
 FALLBACK_TICKERS = {
     "NIFTY 500": "MONIFTY500.NS",
+    "NIFTY 100": "NIF100BEES.NS",
     "NIFTY PHARMA": "PHARMABEES.NS",
     "NIFTY METAL": "METALIETF.NS",
     "NIFTY IT": "ITBEES.NS",
