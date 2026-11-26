@@ -1,13 +1,19 @@
-name: Update NSE EOD Sector & Theme Data
+name: Update NSE Sector Data (Pre-Close & EOD)
 
 on:
   schedule:
-    # 10:45 UTC = 4:15 PM IST, Monday to Friday
+    # 3:00 PM IST (09:30 UTC) — Pre-Close snapshot ready by ~3:10-3:15 PM IST
+    - cron: '30 9 * * 1-5'
+    # 4:15 PM IST (10:45 UTC) — Final official NSE closing prices
     - cron: '45 10 * * 1-5'
-  workflow_dispatch: # Trigger manually anytime from the Actions tab
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: nse-data-update
+  cancel-in-progress: false
 
 jobs:
   fetch-eod:
@@ -24,12 +30,16 @@ jobs:
       - name: Install dependencies
         run: pip install yfinance pandas
 
-      - name: Fetch NSE closing prices (28 symbols)
+      - name: Fetch NSE prices
         run: python fetch_eod.py
 
-      - name: Commit and push if updated (holiday-safe)
+      - name: Commit and push if updated
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add eod_data.csv
-          git diff --staged --quiet || (git commit -m "Update NSE EOD sector & theme data" && git push)
+          git add eod_data.csv last_updated.json
+          if ! git diff --staged --quiet; then
+            git commit -m "Update NSE sector data"
+            git pull --rebase origin main
+            git push
+          fi
