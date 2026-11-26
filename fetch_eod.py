@@ -1,23 +1,25 @@
 import json
+import os
+import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
 
-# Complete 30-column NSE Market-Cap, Sector & Theme Rotation Universe
 TICKERS = {
-    # Benchmarks (2)
+    # Benchmarks & Volatility
     "^NSEI": "NIFTY 50",
     "^CRSLDX": "NIFTY 500",
+    "^INDIAVIX": "INDIA VIX",
 
-    # Market-Cap Tiers (4 additional — NIFTY 50 above completes the 5-tier cap ladder vs NIFTY 500)
+    # Market-Cap Tiers
     "^CNX100": "NIFTY 100",
     "JUNIORBEES.NS": "NIFTY NEXT 50",
     "MID150BEES.NS": "NIFTY MIDCAP 150",
     "HDFCSML250.NS": "NIFTY SMALLCAP 250",
 
-    # Core NSE Sectors (12)
+    # 12 Core NSE Sectors
     "^NSEBANK": "NIFTY BANK",
     "^CNXIT": "NIFTY IT",
     "^CNXPHARMA": "NIFTY PHARMA",
@@ -31,7 +33,7 @@ TICKERS = {
     "^CNXINFRA": "NIFTY INFRA",
     "NIFTY_FIN_SERVICE.NS": "NIFTY FIN SERVICE",
 
-    # NSE Thematic Indices via Liquid ETF Proxies (10)
+    # 10 Thematic ETFs
     "MODEFENCE.NS": "NIFTY DEFENCE",
     "SELECTIPO.NS": "NIFTY IPO",
     "MOCAPITAL.NS": "NIFTY CAPITAL MKTS",
@@ -43,12 +45,11 @@ TICKERS = {
     "CONSUMBEES.NS": "NIFTY CONSUMPTION",
     "TNIDETF.NS": "NIFTY DIGITAL",
 
-    # Risk-Off Precious Metals via ETF Proxies (2)
+    # Risk-Off ETFs
     "GOLDBEES.NS": "GOLD ETF",
     "SILVERBEES.NS": "SILVER ETF",
 }
 
-# Automatic liquid ETF fallbacks if Yahoo skips a raw index ticker
 FALLBACK_TICKERS = {
     "NIFTY 500": "MONIFTY500.NS",
     "NIFTY 100": "NIF100BEES.NS",
@@ -58,38 +59,54 @@ FALLBACK_TICKERS = {
     "NIFTY AUTO": "AUTOBEES.NS",
 }
 
+def send_telegram_summary(closes, meta):
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        return
+    try:
+        latest = closes.iloc[-1]
+        prev = closes.iloc[-2] if len(closes) > 1 else latest
+        ema10 = closes.ewm(span=10, adjust=False).mean().iloc[-1]
+        mcap_cols = [c for c in ["NIFTY 50", "NIFTY 100", "NIFTY NEXT 50", "NIFTY MIDCAP 150", "NIFTY SMALLCAP 250"] if c in closes.columns]
+        above_mcap = sum(1 for c in mcap_cols if pd.notna(latest[c]) and latest[c] > ema10[c])
+        vix_val = latest.get("INDIA VIX", float("nan"))
+        vix_str = f"{vix_val:.2f}" if pd.notna(vix_val) else "N/A"
+        # Top Market Cap by 20D return
+        ret20 = ((closes.iloc[-1] / closes.iloc[-21]) - 1) * 100 if len(closes) > 21 else pd.Series(dtype=float)
+        top_mcap = max(mcap_cols, key=lambda c: ret20.get(c, -999)) if mcap_cols else "N/A"
+        regime = "GREEN (TRADE)" if above_mcap >= 4 and (pd.isna(vix_val) or vix_val < 20) else ("RED (NO-TRADE)" if above_mcap <= 1 or (pd.notna(vix_val) and vix_val >= 22) else "YELLOW (SELECTIVE)")
+        n50_chg = ((latest["NIFTY 50"] / prev["NIFTY 50"]) - 1) * 100 if prev["NIFTY 50"] else 0.0
+        msg = (
+            f"NSE Rotation ({meta['status']}) - {meta['updated_ist']}\n"
+            f"Regime: {regime} | Cap >10EMA: {above_mcap}/{len(mcap_cols)}\n"
+            f"NIFTY 50: {latest['NIFTY 50']:.2f} ({n50_chg:+.2f}%) | India VIX: {vix_str}\n"
+            f"#1 Cap (1M): {top_mcap} ({ret20.get(top_mcap, 0):+.2f}%)"
+        )
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = json.dumps({"chat_id": chat_id, "text": msg}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=10)
+        print("Telegram alert sent.")
+    except Exception as exc:
+        print(f"Telegram alert skipped: {exc}")
 
 def main():
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     today_str = now_ist.strftime("%Y-%m-%d")
     in_session = (
         now_ist.weekday() < 5
-        and (
-            (now_ist.hour == 9 and now_ist.minute >= 15)
-            or (10 <= now_ist.hour <= 14)
-            or (now_ist.hour == 15 and now_ist.minute <= 35)
-        )
+        and ((now_ist.hour == 9 and now_ist.minute >= 15) or (10 <= now_ist.hour <= 14) or (now_ist.hour == 15 and now_ist.minute <= 35))
     )
 
-    # 1. Pull 2-year daily history
-    raw = yf.download(
-        list(TICKERS.keys()),
-        period="2y",
-        interval="1d",
-        auto_adjust=True,
-        progress=False,
-    )
+    raw = yf.download(list(TICKERS.keys()), period="2y", interval="1d", auto_adjust=True, progress=False)
     closes = raw["Close"].rename(columns=TICKERS)
     closes.index = pd.to_datetime(closes.index).strftime("%Y-%m-%d")
     closes.index.name = "Date"
     closes = closes[~closes.index.duplicated(keep="last")].sort_index()
 
-    active_ticker_map = {
-        t: name for t, name in TICKERS.items()
-        if name in closes.columns and closes[name].notna().any()
-    }
+    active_ticker_map = {t: name for t, name in TICKERS.items() if name in closes.columns and closes[name].notna().any()}
 
-    # 2. Fill any skipped index using its liquid ETF fallback
     for col_name, fb_ticker in FALLBACK_TICKERS.items():
         if col_name not in closes.columns or closes[col_name].isna().all():
             fb = yf.download(fb_ticker, period="2y", interval="1d", auto_adjust=True, progress=False)
@@ -105,33 +122,21 @@ def main():
 
     valid_cols = [c for c in TICKERS.values() if c in closes.columns and closes[c].notna().any()]
     dropped = [c for c in TICKERS.values() if c not in valid_cols]
-    if "NIFTY 50" not in valid_cols:
-        raise RuntimeError("Benchmark NIFTY 50 (^NSEI) returned no data. Aborting CSV overwrite.")
     if dropped:
         print(f"Warning: skipped tickers with no data: {dropped}")
 
-    # 3. Merge live 5m prices during Pre-Close window (or if EOD bar hasn't posted yet)
-    intra = yf.download(
-        list(active_ticker_map.keys()),
-        period="1d",
-        interval="5m",
-        auto_adjust=True,
-        progress=False,
-    )
+    intra = yf.download(list(active_ticker_map.keys()), period="1d", interval="5m", auto_adjust=True, progress=False)
     if not intra.empty and "Close" in intra:
         intra_close = intra["Close"]
         if isinstance(intra_close, pd.Series):
             intra_close = intra_close.to_frame(name=list(active_ticker_map.keys())[0])
         intra_close = intra_close.rename(columns=active_ticker_map)
-
         idx = pd.to_datetime(intra_close.index)
         if idx.tz is None:
             idx = idx.tz_localize("UTC")
         intra_close.index = idx.tz_convert("Asia/Kolkata")
-
         live_date = intra_close.index[-1].strftime("%Y-%m-%d")
         latest_row = intra_close.ffill().iloc[-1]
-
         if ((in_session and live_date == today_str) or (live_date > closes.index[-1])) and pd.notna(latest_row.get("NIFTY 50")):
             for col in valid_cols:
                 val = latest_row.get(col)
@@ -140,11 +145,9 @@ def main():
             closes = closes.sort_index()
             print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime('%H:%M IST')}")
 
-    # 4. Forward-fill only (no bfill so newer ETFs preserve leading blank dates)
-    closes = closes[valid_cols].dropna(subset=["NIFTY 50"]).ffill().round(2)
+    closes = closes[valid_cols].ffill().dropna(subset=["NIFTY 50"]).round(2)
     closes.to_csv("eod_data.csv")
 
-    # 5. Save live sync metadata JSON
     meta = {
         "updated_ist": now_ist.strftime("%Y-%m-%d %H:%M IST"),
         "latest_trading_date": closes.index[-1],
@@ -154,8 +157,8 @@ def main():
     with open("last_updated.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
 
+    send_telegram_summary(closes, meta)
     print(f"Saved {len(closes)} trading days x {len(valid_cols)} columns through {closes.index[-1]} ({meta['status']})")
-
 
 if __name__ == "__main__":
     main()
