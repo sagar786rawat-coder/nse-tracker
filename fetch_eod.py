@@ -5,12 +5,13 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
 
+# Complete 28-column NSE Sector & Theme Rotation Universe
 TICKERS = {
-    # Benchmarks
+    # Benchmarks (2)
     "^NSEI": "NIFTY 50",
     "^CRSLDX": "NIFTY 500",
 
-    # 12 Core NSE Sectors
+    # Core NSE Sectors (12)
     "^NSEBANK": "NIFTY BANK",
     "^CNXIT": "NIFTY IT",
     "^CNXPHARMA": "NIFTY PHARMA",
@@ -24,7 +25,7 @@ TICKERS = {
     "^CNXINFRA": "NIFTY INFRA",
     "NIFTY_FIN_SERVICE.NS": "NIFTY FIN SERVICE",
 
-    # 10 Thematic ETFs
+    # NSE Thematic Indices via Liquid ETF Proxies (10)
     "MODEFENCE.NS": "NIFTY DEFENCE",
     "SELECTIPO.NS": "NIFTY IPO",
     "MOCAPITAL.NS": "NIFTY CAPITAL MKTS",
@@ -36,7 +37,7 @@ TICKERS = {
     "CONSUMBEES.NS": "NIFTY CONSUMPTION",
     "TNIDETF.NS": "NIFTY DIGITAL",
 
-    # 4 Broad Market & Risk-Off ETFs
+    # Broad Market & Risk-Off Metals via ETF Proxies (4)
     "MID150BEES.NS": "NIFTY MIDCAP 150",
     "HDFCSML250.NS": "NIFTY SMALLCAP 250",
     "GOLDBEES.NS": "GOLD ETF",
@@ -51,6 +52,7 @@ FALLBACK_TICKERS = {
     "NIFTY IT": "ITBEES.NS",
     "NIFTY AUTO": "AUTOBEES.NS",
 }
+
 
 def main():
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -82,7 +84,7 @@ def main():
         if name in closes.columns and closes[name].notna().any()
     }
 
-    # 2. Fill any skipped index using its ETF fallback
+    # 2. Fill any skipped index using its liquid ETF fallback
     for col_name, fb_ticker in FALLBACK_TICKERS.items():
         if col_name not in closes.columns or closes[col_name].isna().all():
             fb = yf.download(fb_ticker, period="2y", interval="1d", auto_adjust=True, progress=False)
@@ -98,10 +100,12 @@ def main():
 
     valid_cols = [c for c in TICKERS.values() if c in closes.columns and closes[c].notna().any()]
     dropped = [c for c in TICKERS.values() if c not in valid_cols]
+    if "NIFTY 50" not in valid_cols:
+        raise RuntimeError("Benchmark NIFTY 50 (^NSEI) returned no data. Aborting CSV overwrite.")
     if dropped:
         print(f"Warning: skipped tickers with no data: {dropped}")
 
-    # 3. Merge live 5m prices only during market hours (or if 4:15 PM daily bar hasn't posted yet)
+    # 3. Merge live 5m prices during Pre-Close window (or if EOD bar hasn't posted yet)
     intra = yf.download(
         list(active_ticker_map.keys()),
         period="1d",
@@ -131,11 +135,11 @@ def main():
             closes = closes.sort_index()
             print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime('%H:%M IST')}")
 
-    # 4. Forward-fill only (keeps blank leading dates for newer ETFs)
-    closes = closes[valid_cols].ffill().dropna(subset=["NIFTY 50"]).round(2)
+    # 4. Forward-fill only (no bfill so newer ETFs preserve leading blank dates)
+    closes = closes[valid_cols].dropna(subset=["NIFTY 50"]).ffill().round(2)
     closes.to_csv("eod_data.csv")
 
-    # 5. Save sync metadata
+    # 5. Save live sync metadata JSON
     meta = {
         "updated_ist": now_ist.strftime("%Y-%m-%d %H:%M IST"),
         "latest_trading_date": closes.index[-1],
@@ -146,6 +150,7 @@ def main():
         json.dump(meta, f, indent=2)
 
     print(f"Saved {len(closes)} trading days x {len(valid_cols)} columns through {closes.index[-1]} ({meta['status']})")
+
 
 if __name__ == "__main__":
     main()
