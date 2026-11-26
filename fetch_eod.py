@@ -72,16 +72,21 @@ def send_telegram_summary(closes, meta):
         above_mcap = sum(1 for c in mcap_cols if pd.notna(latest[c]) and latest[c] > ema10[c])
         vix_val = latest.get("INDIA VIX", float("nan"))
         vix_str = f"{vix_val:.2f}" if pd.notna(vix_val) else "N/A"
-        # Top Market Cap by 20D return
         ret20 = ((closes.iloc[-1] / closes.iloc[-21]) - 1) * 100 if len(closes) > 21 else pd.Series(dtype=float)
-        top_mcap = max(mcap_cols, key=lambda c: ret20.get(c, -999)) if mcap_cols else "N/A"
+        top_mcap = max(mcap_cols, key=lambda c: float(ret20[c]) if c in ret20 and pd.notna(ret20[c]) else -999.0) if mcap_cols else "N/A"
+        top_mcap_ret = float(ret20[top_mcap]) if top_mcap in ret20 and pd.notna(ret20[top_mcap]) else 0.0
+        skip_cols = set(mcap_cols + ["NIFTY 500", "INDIA VIX", "GOLD ETF", "SILVER ETF"])
+        sec_cols = [c for c in closes.columns if c not in skip_cols and c in ret20 and pd.notna(ret20[c])]
+        top_secs = sorted(sec_cols, key=lambda c: float(ret20[c]), reverse=True)[:3]
+        top_sec_str = ", ".join(f"{c.replace('NIFTY ', '')} ({ret20[c]:+.1f}%)" for c in top_secs) if top_secs else "N/A"
         regime = "GREEN (TRADE)" if above_mcap >= 4 and (pd.isna(vix_val) or vix_val < 20) else ("RED (NO-TRADE)" if above_mcap <= 1 or (pd.notna(vix_val) and vix_val >= 22) else "YELLOW (SELECTIVE)")
         n50_chg = ((latest["NIFTY 50"] / prev["NIFTY 50"]) - 1) * 100 if prev["NIFTY 50"] else 0.0
         msg = (
             f"NSE Rotation ({meta['status']}) - {meta['updated_ist']}\n"
             f"Regime: {regime} | Cap >10EMA: {above_mcap}/{len(mcap_cols)}\n"
             f"NIFTY 50: {latest['NIFTY 50']:.2f} ({n50_chg:+.2f}%) | India VIX: {vix_str}\n"
-            f"#1 Cap (1M): {top_mcap} ({ret20.get(top_mcap, 0):+.2f}%)"
+            f"#1 Cap (1M): {top_mcap} ({top_mcap_ret:+.2f}%)\n"
+            f"Top Sectors (1M): {top_sec_str}"
         )
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = json.dumps({"chat_id": chat_id, "text": msg}).encode("utf-8")
@@ -105,10 +110,10 @@ def main():
     closes.index.name = "Date"
     closes = closes[~closes.index.duplicated(keep="last")].sort_index()
 
-    active_ticker_map = {t: name for t, name in TICKERS.items() if name in closes.columns and closes[name].notna().any()}
+    active_ticker_map = {t: name for t, name in TICKERS.items() if name in closes.columns and closes[name].dropna().shape[0] >= 20}
 
     for col_name, fb_ticker in FALLBACK_TICKERS.items():
-        if col_name not in closes.columns or closes[col_name].isna().all():
+        if col_name not in closes.columns or closes[col_name].dropna().shape[0] < 20:
             fb = yf.download(fb_ticker, period="2y", interval="1d", auto_adjust=True, progress=False)
             if not fb.empty and "Close" in fb:
                 series = fb["Close"]
