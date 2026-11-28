@@ -7,6 +7,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
 
+MIN_WEEKLY_HISTORY_DAYS = 180
+TARGET_FULL_HISTORY_DAYS = 250
+
 TICKERS = {
     # Benchmarks & Volatility
     "^NSEI": "NIFTY 50",
@@ -51,13 +54,36 @@ TICKERS = {
 }
 
 FALLBACK_TICKERS = {
-    "NIFTY 500": "MONIFTY500.NS",
-    "NIFTY 100": "NIF100BEES.NS",
-    "NIFTY PHARMA": "PHARMABEES.NS",
-    "NIFTY METAL": "METALIETF.NS",
-    "NIFTY IT": "ITBEES.NS",
-    "NIFTY AUTO": "AUTOBEES.NS",
+    "NIFTY 500": ["MONIFTY500.NS"],
+    "NIFTY 100": ["NIF100BEES.NS"],
+    "NIFTY NEXT 50": ["^NSMIDCP", "NEXT50IETF.NS", "SETFNN50.NS", "UTINEXT50.NS", "HDFCNEXT50.NS"],
+    "NIFTY MIDCAP 150": ["HDFCMID150.NS", "MIDCAPETF.NS", "NIFTYMIDCAP150.NS"],
+    "NIFTY SMALLCAP 250": ["MOSMALL250.NS", "SMALLCAP.NS"],
+    "NIFTY PHARMA": ["PHARMABEES.NS"],
+    "NIFTY METAL": ["METALIETF.NS"],
+    "NIFTY IT": ["ITBEES.NS"],
+    "NIFTY AUTO": ["AUTOBEES.NS"],
 }
+
+
+def download_single_close(ticker, period="2y"):
+    try:
+        df = yf.download(ticker, period=period, interval="1d", auto_adjust=True, progress=False)
+        if df is None or df.empty or "Close" not in df:
+            return None
+        series = df["Close"]
+        if isinstance(series, pd.DataFrame):
+            series = series.iloc[:, 0]
+        series = series.dropna()
+        if series.empty:
+            return None
+        series.index = pd.to_datetime(series.index).strftime("%Y-%m-%d")
+        series = series[~series.index.duplicated(keep="last")].sort_index()
+        return series
+    except Exception as exc:
+        print(f"Download failed for {ticker}: {exc}")
+        return None
+
 
 def send_telegram_summary(closes, meta):
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -96,6 +122,7 @@ def send_telegram_summary(closes, meta):
     except Exception as exc:
         print(f"Telegram alert skipped: {exc}")
 
+
 def main():
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     today_str = now_ist.strftime("%Y-%m-%d")
@@ -110,47 +137,98 @@ def main():
     closes.index.name = "Date"
     closes = closes[~closes.index.duplicated(keep="last")].sort_index()
 
-    active_ticker_map = {t: name for t, name in TICKERS.items() if name in closes.columns and closes[name].dropna().shape[0] >= 20}
+    latest_n50_date = (
+        closes["NIFTY 50"].dropna().index[-1]
+        if "NIFTY 50" in closes.columns and closes["NIFTY 50"].notna().any()
+        else closes.index[-1]
+    )
 
-    for col_name, fb_ticker in FALLBACK_TICKERS.items():
-        if col_name not in closes.columns or closes[col_name].dropna().shape[0] < 20:
-            fb = yf.download(fb_ticker, period="2y", interval="1d", auto_adjust=True, progress=False)
-            if not fb.empty and "Close" in fb:
-                series = fb["Close"]
-                if isinstance(series, pd.DataFrame):
-                    series = series.iloc[:, 0]
-                series.index = pd.to_datetime(series.index).strftime("%Y-%m-%d")
-                series = series[~series.index.duplicated(keep="last")]
-                closes[col_name] = series
-                active_ticker_map[fb_ticker] = col_name
-                print(f"Used fallback {fb_ticker} for {col_name}")
+    active_ticker_map = {}
+
+    for primary_ticker, col_name in TICKERS.items():
+        if col_name in closes.columns and closes[col_name].notna().any():
+            non_null = closes[col_name].dropna()
+            best_count = int(non_null.shape[0])
+            best_fresh = non_null.index[-1] == latest_n50_date
+            best_ticker = primary_ticker
+        else:
+            best_count = 0
+            best_fresh = False
+            best_ticker = None
+
+        if best_count < MIN_WEEKLY_HISTORY_DAYS or not best_fresh:
+            candidates = [primary_ticker] + FALLBACK_TICKERS.get(col_name, [])
+            seen = set()
+            for cand in candidates:
+                if cand in seen:
+                    continue
+                seen.add(cand)
+                series = download_single_close(cand, period="2y")
+                if series is None:
+                    continue
+                aligned = series.reindex(closes.index)
+                cand_non_null = aligned.dropna()
+                cand_count = int(cand_non_null.shape[0])
+                if cand_count == 0:
+                    continue
+                cand_fresh = cand_non_null.index[-1] == latest_n50_date
+
+                cand_ready = cand_count >= MIN_WEEKLY_HISTORY_DAYS and cand_fresh
+                best_ready = best_count >= MIN_WEEKLY_HISTORY_DAYS and best_fresh
+
+                better = (
+                    (cand_ready and not best_ready)
+                    or (cand_count > best_count and (cand_fresh or not best_fresh))
+                    or (cand_count == best_count and cand_fresh and not best_fresh)
+                )
+                if better:
+                    closes[col_name] = aligned
+                    best_count = cand_count
+                    best_fresh = cand_fresh
+                    best_ticker = cand
+                    print(f"Resolved {col_name} via {cand} ({best_count}d, fresh={best_fresh})")
+                    if best_count >= TARGET_FULL_HISTORY_DAYS and best_fresh:
+                        break
+
+        if best_ticker and best_count >= 20:
+            active_ticker_map[best_ticker] = col_name
 
     valid_cols = [c for c in TICKERS.values() if c in closes.columns and closes[c].notna().any()]
     dropped = [c for c in TICKERS.values() if c not in valid_cols]
     if dropped:
         print(f"Warning: skipped tickers with no data: {dropped}")
 
-    intra = yf.download(list(active_ticker_map.keys()), period="1d", interval="5m", auto_adjust=True, progress=False)
-    if not intra.empty and "Close" in intra:
-        intra_close = intra["Close"]
-        if isinstance(intra_close, pd.Series):
-            intra_close = intra_close.to_frame(name=list(active_ticker_map.keys())[0])
-        intra_close = intra_close.rename(columns=active_ticker_map)
-        idx = pd.to_datetime(intra_close.index)
-        if idx.tz is None:
-            idx = idx.tz_localize("UTC")
-        intra_close.index = idx.tz_convert("Asia/Kolkata")
-        live_date = intra_close.index[-1].strftime("%Y-%m-%d")
-        latest_row = intra_close.ffill().iloc[-1]
-        if ((in_session and live_date == today_str) or (live_date > closes.index[-1])) and pd.notna(latest_row.get("NIFTY 50")):
-            for col in valid_cols:
-                val = latest_row.get(col)
-                if pd.notna(val):
-                    closes.loc[live_date, col] = float(val)
-            closes = closes.sort_index()
-            print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime('%H:%M IST')}")
+    short_cols = {c: int(closes[c].dropna().shape[0]) for c in valid_cols if closes[c].dropna().shape[0] < MIN_WEEKLY_HISTORY_DAYS}
+    if short_cols:
+        print(f"Note: columns under {MIN_WEEKLY_HISTORY_DAYS}d history: {short_cols}")
 
-    closes = closes[valid_cols].ffill().dropna(subset=["NIFTY 50"]).round(2)
+    if active_ticker_map:
+        try:
+            intra = yf.download(list(active_ticker_map.keys()), period="1d", interval="5m", auto_adjust=True, progress=False)
+            if not intra.empty and "Close" in intra:
+                intra_close = intra["Close"]
+                if isinstance(intra_close, pd.Series):
+                    intra_close = intra_close.to_frame(name=list(active_ticker_map.keys())[0])
+                intra_close = intra_close.rename(columns=active_ticker_map)
+                idx = pd.to_datetime(intra_close.index)
+                if idx.tz is None:
+                    idx = idx.tz_localize("UTC")
+                intra_close.index = idx.tz_convert("Asia/Kolkata")
+                live_date = intra_close.index[-1].strftime("%Y-%m-%d")
+                latest_row = intra_close.ffill().iloc[-1]
+                if ((in_session and live_date == today_str) or (live_date > closes.index[-1])) and pd.notna(latest_row.get("NIFTY 50")):
+                    for col in valid_cols:
+                        val = latest_row.get(col)
+                        if isinstance(val, pd.Series):
+                            val = val.dropna().iloc[-1] if not val.dropna().empty else None
+                        if pd.notna(val):
+                            closes.loc[live_date, col] = float(val)
+                    closes = closes.sort_index()
+                    print(f"Merged 5m snapshot for {live_date} at {now_ist.strftime('%H:%M IST')}")
+        except Exception as exc:
+            print(f"Intraday 5m merge skipped: {exc}")
+
+    closes = closes[valid_cols].ffill(limit=5).dropna(subset=["NIFTY 50"]).round(2)
     closes.to_csv("eod_data.csv")
 
     meta = {
@@ -164,6 +242,7 @@ def main():
 
     send_telegram_summary(closes, meta)
     print(f"Saved {len(closes)} trading days x {len(valid_cols)} columns through {closes.index[-1]} ({meta['status']})")
+
 
 if __name__ == "__main__":
     main()
